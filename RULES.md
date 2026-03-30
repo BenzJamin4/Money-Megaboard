@@ -19,9 +19,11 @@ When incrementing the version (e.g., `v3.4.9` → `v4.0.1`):
 - **0.X.0** (Minor) — New features or new ideas added
 - **0.0.X** (Patch) — Bug fixes and polishes of features that already exist
 
-## 3. Git Workflow & Backups
+## 3. Git Workflow, Backups & Security
 1. **Snapshot before editing**: `git add . && git commit -m "Snapshot before starting vX.Y.Z"`
 2. **Push to GitHub after every version** — the PAT is stored in `.agents/github_token` and embedded in the `origin` remote URL. **Failure to push is unacceptable.**
+3. **Strict `.gitignore` Maintenance**: You must actively keep `.gitignore` up to date with any folder or file name changes across the project.
+4. **Data Privacy Check**: Before uploading *anything* to GitHub that might contain personal or financial information (like exported CSVs, debug logs, app data, etc.), you MUST add those files/paths to the `.gitignore` or explicitly warn the user and await authorization.
 
 ## 4. Virtual Environment
 - Lives at `shared/venv/` — do **NOT** copy or create venv inside version folders.
