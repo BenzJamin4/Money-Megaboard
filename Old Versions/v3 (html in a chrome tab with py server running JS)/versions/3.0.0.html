@@ -1,0 +1,503 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Money Megaboard v2.3.1 (Persistent Standalone)</title>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <style>
+        body { background-color: #ffffff !important; color: #000000 !important; margin: 0; font-family: sans-serif; }
+        input, select, button { border: 2px solid #000000; outline: none; font-family: sans-serif; }
+        input::placeholder { color: #000000; opacity: 0.6; }
+        input[type="file"] { color: #000000 !important; background: #ffffff; }
+        input[type="file"]::-webkit-file-upload-button { border: 2px solid #000000; background: #ffffff; color: #000000; font-weight: bold; padding: 5px 10px; cursor: pointer; }
+        table th, table td { border: 2px solid #000000 !important; }
+        hr { border: 1px solid #000000; }
+        .main-container { max-width: 1300px; margin: 0 auto; padding: 20px; background-color: #ffffff; color: #000000; }
+    </style>
+</head>
+<body>
+
+    <div class="main-container">
+        <h2 style="color: #000000; border-bottom: 3px solid #000000; padding-bottom: 5px;">Money Megaboard v2.3.1</h2>
+
+        <div style="margin-bottom: 30px; padding: 15px; background: #ffffff; border: 3px solid #000000;">
+            <div style="display: flex; justify-content: space-between; align-items: flex-start;">
+                <div>
+                    <strong>Upload All Account CSVs:</strong><br>
+                    <span style="font-size: 12px; color: #000000;">Files sharing a tag like "name(fmfcu)" will be mapped together.</span><br><br>
+                    <input type="file" id="csvFiles" accept=".csv" multiple style="padding: 5px;" />
+                </div>
+                <div>
+                    <button id="clearStorageBtn" style="padding: 8px 12px; background: #e74c3c; color: #ffffff; cursor: pointer; font-weight: bold;">
+                        Clear Saved Data
+                    </button>
+                </div>
+            </div>
+
+            <div id="mappingContainer" style="margin-top: 20px; display: none; background: #ffffff; padding: 15px; border: 2px dashed #000000;">
+                <h3 style="margin-top: 0; color: #000000;">Map CSV Columns</h3>
+                <div id="mappingList"></div>
+                <button id="processMappedDataBtn" style="margin-top: 15px; padding: 8px 15px; background: #27ae60; color: #ffffff; cursor: pointer; font-weight: bold;">
+                    Confirm Mappings & Load Data
+                </button>
+            </div>
+        </div>
+
+        <div style="margin-bottom: 30px; padding: 15px; background: #ffffff; border: 3px solid #000000;">
+            <div style="display: flex; justify-content: space-between; align-items: center;">
+                <h3 style="margin: 0; color: #000000;">Transfer Rules (Auto-Linker)</h3>
+                <button id="addTransferRuleBtn" style="padding: 5px 10px; background: #000000; color: #ffffff; cursor: pointer; font-weight: bold;">+ Add Rule</button>
+            </div>
+            <p style="font-size: 12px; margin-top: 5px;">Define keywords and a day-range to link transfers.</p>
+            <div id="transferRulesContainer" style="margin-top: 10px; display: flex; flex-direction: column; gap: 10px;"></div>
+            <button id="applyRulesBtn" style="margin-top: 15px; padding: 5px 10px; background: #2980b9; color: #ffffff; cursor: pointer; font-weight: bold; display: none;">Apply Rules to Current Data</button>
+        </div>
+
+        <div style="display: flex; flex-direction: column; gap: 40px; margin-bottom: 40px;">
+            <div style="width: 100%; background: #ffffff; padding: 15px; border: 3px solid #000000; height: 500px; box-sizing: border-box;">
+                <canvas id="netWorthChart"></canvas>
+            </div>
+            <div style="width: 100%; background: #ffffff; padding: 15px; border: 3px solid #000000; height: 500px; box-sizing: border-box;">
+                <canvas id="posNegChart"></canvas>
+            </div>
+        </div>
+
+        <div style="margin-bottom: 30px; padding: 15px; background: #ffffff; border: 3px solid #000000;">
+            <h3 style="color: #000000; margin-top: 0;">Category Breakdown</h3>
+            <label style="font-weight: bold;">Start: <input type="date" id="startDate" style="padding: 2px;"></label>
+            <label style="margin-left: 10px; font-weight: bold;">End: <input type="date" id="endDate" style="padding: 2px;"></label>
+            <button id="updatePieBtn" style="margin-left: 10px; padding: 5px 10px; background: #000000; color: #ffffff; cursor: pointer; font-weight: bold;">Update Pie Charts</button>
+
+            <div style="display: flex; justify-content: space-around; flex-wrap: wrap; margin-top: 20px;">
+                <div style="width: 45%; min-width: 300px; text-align: center;">
+                    <h4 style="color: #000000; text-decoration: underline;">Spending</h4>
+                    <canvas id="pieChartExpenses"></canvas>
+                </div>
+                <div style="width: 45%; min-width: 300px; text-align: center;">
+                    <h4 style="color: #000000; text-decoration: underline;">Income</h4>
+                    <canvas id="pieChartIncome"></canvas>
+                </div>
+            </div>
+        </div>
+
+        <h3 style="color: #000000;">Transactions</h3>
+        <div id="tableContainer" style="max-height:600px; overflow:auto; border:3px solid #000000; position:relative;">
+            <table style="font-size:12px; width:100%; border-collapse:collapse; text-align: left; background: #ffffff;">
+                <thead style="position:sticky; top:0; background:#ffffff; z-index:1;">
+                    <tr style="border-bottom: 3px solid #000000;">
+                        <th style="padding: 8px; text-align:center;">Isolate</th>
+                        <th style="padding: 8px;">Date</th>
+                        <th style="padding: 8px;">Description</th>
+                        <th style="padding: 8px;">Amount</th>
+                        <th style="padding: 8px; min-width: 140px;">Category</th>
+                        <th style="padding: 8px;">Account</th>
+                        <th style="padding: 8px; width: 25%;">Notes</th>
+                    </tr>
+                </thead>
+                <tbody id="txnTable"></tbody>
+            </table>
+        </div>
+    </div>
+
+    <script>
+        let netChart, posNegChart, pieChartExpenses, pieChartIncome;
+        let allTransactions = [];
+        let pendingGroups = {};
+
+        const INCOME_CATS = ["Income", "Dividends", "Transfers", "Other"];
+        const EXPENSE_CATS = ["Food", "Transportation", "Shopping", "Education", "Subscription", "Entertainment", "Clothes+Haircuts", "Health", "Transfers", "Other"];
+
+        let customCategoryMap = JSON.parse(localStorage.getItem("mm_customCategories")) || {};
+        let isolatedMap = JSON.parse(localStorage.getItem("mm_isolatedTxs")) || {};
+        let csvMappings = JSON.parse(localStorage.getItem("mm_csvMappings")) || {};
+        let customNotes = JSON.parse(localStorage.getItem("mm_customNotes")) || {};
+        let transferRules = JSON.parse(localStorage.getItem("mm_transferRules")) || [];
+
+        window.onload = () => {
+            Chart.defaults.color = '#000000';
+            Chart.defaults.font.family = 'sans-serif';
+            Chart.defaults.font.weight = 'bold';
+            Chart.defaults.borderColor = '#000000';
+            setupEventListeners();
+            renderTransferRules();
+        };
+
+        function setupEventListeners() {
+            document.getElementById("csvFiles").addEventListener("change", async e => {
+                const files = e.target.files;
+                if (!files.length) return;
+                pendingGroups = {};
+                for (let file of files) {
+                    const text = await file.text();
+                    let rawName = file.name.replace(/\.[^/.]+$/, "");
+                    let baseName = rawName.replace(/#\d+$/, "").trim();
+                    let groupMatch = baseName.match(/\(([^)]+)\)/);
+                    let mappingKey = groupMatch ? `group_${groupMatch[1].toLowerCase()}` : baseName.toLowerCase();
+                    let displayName = groupMatch ? `Group: ${groupMatch[1].toUpperCase()}` : baseName;
+                    let cleanAccountName = baseName.replace(/\([^)]+\)/g, '').trim();
+
+                    const rows = text.trim().split("\n");
+                    const headers = splitCSVRow(rows[0]).map(h => h.trim());
+                    if (!pendingGroups[mappingKey]) {
+                        pendingGroups[mappingKey] = { mappingKey, displayName, headers, filesData: [] };
+                    }
+                    pendingGroups[mappingKey].filesData.push({ file, rows, accountName: cleanAccountName });
+                }
+                renderMappingUI();
+            });
+
+            document.getElementById("processMappedDataBtn").addEventListener("click", () => {
+                saveMappingsFromUI();
+                processPendingFiles();
+            });
+
+            document.getElementById("updatePieBtn").addEventListener("click", updatePieCharts);
+            document.getElementById("addTransferRuleBtn").addEventListener("click", addTransferRule);
+            document.getElementById("applyRulesBtn").addEventListener("click", () => {
+                if(allTransactions.length) { detectTransfers(allTransactions); renderTable(); updateCharts(); }
+            });
+
+            document.getElementById("clearStorageBtn").addEventListener("click", () => {
+                if(confirm("Clear ALL saved settings?")) { localStorage.clear(); location.reload(); }
+            });
+        }
+
+        function renderTransferRules() {
+            const container = document.getElementById("transferRulesContainer");
+            container.innerHTML = "";
+            transferRules.forEach((rule, idx) => {
+                const div = document.createElement("div");
+                div.style.cssText = "display:flex; gap:10px; align-items:center; flex-wrap:wrap; padding:10px; border:2px solid #000000;";
+                div.innerHTML = `
+                    <div style="display:flex; flex-direction:column;">
+                        <label style="font-weight:bold; font-size:11px;">Account A Name</label>
+                        <input type="text" class="rule-input" data-idx="${idx}" data-field="acc1" value="${rule.acc1}" placeholder="e.g. checking" style="width:100px;">
+                    </div>
+                    <div style="display:flex; flex-direction:column;">
+                        <label style="font-weight:bold; font-size:11px;">Desc Contains</label>
+                        <input type="text" class="rule-input" data-idx="${idx}" data-field="desc1" value="${rule.desc1}" placeholder="e.g. paypal" style="width:120px;">
+                    </div>
+                    <strong style="font-size: 16px;">⟷</strong>
+                    <div style="display:flex; flex-direction:column;">
+                        <label style="font-weight:bold; font-size:11px;">Account B Name</label>
+                        <input type="text" class="rule-input" data-idx="${idx}" data-field="acc2" value="${rule.acc2}" placeholder="e.g. paypal" style="width:100px;">
+                    </div>
+                    <div style="display:flex; flex-direction:column;">
+                        <label style="font-weight:bold; font-size:11px;">Desc Contains</label>
+                        <input type="text" class="rule-input" data-idx="${idx}" data-field="desc2" value="${rule.desc2}" placeholder="e.g. transfer" style="width:120px;">
+                    </div>
+                    <div style="display:flex; flex-direction:column;">
+                        <label style="font-weight:bold; font-size:11px;">Max Days</label>
+                        <input type="number" class="rule-input" data-idx="${idx}" data-field="days" value="${rule.days}" style="width:50px;">
+                    </div>
+                    <button class="del-rule-btn" data-idx="${idx}" style="padding:5px; background:#e74c3c; color:#ffffff; cursor:pointer; font-weight:bold;">X</button>
+                `;
+                container.appendChild(div);
+            });
+            document.querySelectorAll('.rule-input').forEach(inp => inp.addEventListener('change', saveTransferRules));
+            document.querySelectorAll('.del-rule-btn').forEach(btn => btn.addEventListener('click', (e) => {
+                transferRules.splice(e.target.dataset.idx, 1);
+                localStorage.setItem("mm_transferRules", JSON.stringify(transferRules));
+                renderTransferRules();
+            }));
+            document.getElementById("applyRulesBtn").style.display = transferRules.length > 0 ? "block" : "none";
+        }
+
+        function saveTransferRules() {
+            document.querySelectorAll('.rule-input').forEach(inp => {
+                const idx = inp.dataset.idx;
+                const field = inp.dataset.field;
+                if(transferRules[idx]) transferRules[idx][field] = field === 'days' ? parseInt(inp.value)||0 : inp.value.toLowerCase();
+            });
+            localStorage.setItem("mm_transferRules", JSON.stringify(transferRules));
+        }
+
+        function addTransferRule() {
+            transferRules.push({ acc1: "", desc1: "", acc2: "", desc2: "", days: 3 });
+            renderTransferRules();
+        }
+
+        function splitCSVRow(row) {
+            let result = [], inQuotes = false, current = "";
+            for (let i = 0; i < row.length; i++) {
+                let char = row[i];
+                if (char === '"') {
+                    if (inQuotes && row[i+1] === '"') { current += '"'; i++; }
+                    else inQuotes = !inQuotes;
+                } else if (char === ',' && !inQuotes) { result.push(current); current = ""; }
+                else current += char;
+            }
+            result.push(current);
+            return result;
+        }
+
+        function renderMappingUI() {
+            const container = document.getElementById("mappingContainer");
+            const list = document.getElementById("mappingList");
+            list.innerHTML = "";
+            container.style.display = "block";
+            
+            Object.values(pendingGroups).forEach((group) => {
+                const savedMap = csvMappings[group.mappingKey] || {};
+                const headerOptions = `<option value="">-- None --</option>` + group.headers.map(h => `<option value="${h}">${h}</option>`).join('');
+                const guess = (k) => group.headers.find(h => k.some(x => h.toLowerCase().includes(x))) || "";
+                
+                const fileDiv = document.createElement("div");
+                fileDiv.style.cssText = "margin-bottom:15px; padding:10px; border:2px solid #000000;";
+                fileDiv.innerHTML = `
+                    <div style="font-weight: bold; margin-bottom: 5px;">${group.displayName}</div>
+                    <div style="display: flex; gap: 10px; flex-wrap: wrap;">
+                        <label>Date: <select class="map-sel" data-type="date" data-group="${group.mappingKey}">${headerOptions}</select></label>
+                        <label>Desc: <select class="map-sel" data-type="desc" data-group="${group.mappingKey}">${headerOptions}</select></label>
+                        <label>Amount: <select class="map-sel" data-type="amount" data-group="${group.mappingKey}">${headerOptions}</select></label>
+                        <label>Debit: <select class="map-sel" data-type="debit" data-group="${group.mappingKey}">${headerOptions}</select></label>
+                        <label>Credit: <select class="map-sel" data-type="credit" data-group="${group.mappingKey}">${headerOptions}</select></label>
+                        <label>Notes: <select class="map-sel" data-type="notes" data-group="${group.mappingKey}">${headerOptions}</select></label>
+                    </div>
+                    <div class="unused-cols" style="font-size: 11px; font-weight: bold; margin-top: 10px;"></div>
+                `;
+                list.appendChild(fileDiv);
+
+                fileDiv.querySelector(`select[data-type="date"]`).value = savedMap.date || guess(["date"]);
+                fileDiv.querySelector(`select[data-type="desc"]`).value = savedMap.desc || guess(["description", "name", "title"]);
+                fileDiv.querySelector(`select[data-type="amount"]`).value = savedMap.amount || guess(["amount", "total", "net"]);
+                fileDiv.querySelector(`select[data-type="debit"]`).value = savedMap.debit || guess(["debit"]);
+                fileDiv.querySelector(`select[data-type="credit"]`).value = savedMap.credit || guess(["credit"]);
+                fileDiv.querySelector(`select[data-type="notes"]`).value = savedMap.notes || guess(["item title", "memo", "note"]);
+
+                const updateUnused = () => {
+                    const used = Array.from(fileDiv.querySelectorAll('.map-sel')).map(s => s.value).filter(v => v !== "");
+                    const unused = group.headers.filter(h => !used.includes(h));
+                    fileDiv.querySelector('.unused-cols').innerText = `Unused Columns: ${unused.length ? unused.join(", ") : "None"}`;
+                };
+                fileDiv.querySelectorAll('.map-sel').forEach(sel => sel.addEventListener('change', updateUnused));
+                updateUnused(); 
+            });
+        }
+
+        function saveMappingsFromUI() {
+            Object.keys(pendingGroups).forEach(groupKey => {
+                const map = {};
+                const selects = document.querySelectorAll(`select[data-group="${groupKey}"]`);
+                selects.forEach(s => map[s.getAttribute('data-type')] = s.value);
+                csvMappings[groupKey] = map;
+            });
+            localStorage.setItem("mm_csvMappings", JSON.stringify(csvMappings));
+        }
+
+        function parseAmount(str) {
+            if (!str) return 0;
+            const isNegative = str.includes('-') || (str.includes('(') && str.includes(')'));
+            const val = parseFloat(str.replace(/[^0-9.]/g, '')) || 0;
+            return isNegative ? -Math.abs(val) : Math.abs(val);
+        }
+
+        function parseCSVData(rows, headers, accountName, map) {
+            const data = [];
+            const dIdx = headers.indexOf(map.date), dsIdx = headers.indexOf(map.desc), aIdx = headers.indexOf(map.amount);
+            const drIdx = headers.indexOf(map.debit), crIdx = headers.indexOf(map.credit), nIdx = headers.indexOf(map.notes);
+            const statusIdx = headers.findIndex(h => h.toLowerCase() === "status");
+            const typeIdx = headers.findIndex(h => h.toLowerCase() === "type");
+
+            for (let i = 1; i < rows.length; i++) {
+                const cols = splitCSVRow(rows[i]);
+                if (!cols[dIdx]) continue;
+                if (statusIdx !== -1 && ["pending", "denied", "canceled"].includes(cols[statusIdx]?.toLowerCase())) continue;
+                if (typeIdx !== -1 && ["shopping cart item", "authorization", "hold"].some(t => cols[typeIdx]?.toLowerCase().includes(t))) continue;
+
+                const date = new Date(cols[dIdx]);
+                if (isNaN(date)) continue;
+                let amount = (aIdx !== -1 && cols[aIdx]) ? parseAmount(cols[aIdx]) : ((crIdx !== -1 ? parseAmount(cols[crIdx]) : 0) - (drIdx !== -1 ? parseAmount(cols[drIdx]) : 0));
+
+                const rawDesc = cols[dsIdx] || "", normDesc = rawDesc.replace(/[0-9]/g, '').trim().toLowerCase();
+                const txId = `${date.getTime()}_${amount}_${rawDesc.replace(/[^a-zA-Z0-9]/g, '')}`;
+
+                let cat = guessCategory(rawDesc, amount);
+                let isolate = false;
+                if (isolatedMap[txId]) { cat = isolatedMap[txId].category; isolate = isolatedMap[txId].isolate; }
+
+                data.push({ id: txId, date, desc: rawDesc, normalizedDesc: normDesc, amount, notes: customNotes[txId] || cols[nIdx] || "", category: cat, account: accountName, isTransfer: false, isHidden: false, isolate: isolate, transferPartner: null });
+            }
+            return data;
+        }
+
+        function processPendingFiles() {
+            let parsed = [];
+            Object.values(pendingGroups).forEach(g => {
+                const m = csvMappings[g.mappingKey];
+                g.filesData.forEach(fd => parsed = parsed.concat(parseCSVData(fd.rows, g.headers, fd.accountName, m)));
+            });
+            allTransactions = parsed;
+            detectTransfers(allTransactions);
+            allTransactions.sort((a, b) => b.date - a.date);
+            if (allTransactions.length) {
+                document.getElementById("startDate").value = allTransactions[allTransactions.length-1].date.toISOString().split('T')[0];
+                document.getElementById("endDate").value = allTransactions[0].date.toISOString().split('T')[0];
+            }
+            document.getElementById("mappingContainer").style.display = "none";
+            renderTable(); updateCharts();
+        }
+
+        function detectTransfers(transactions) {
+            transactions.forEach(tx => { tx.isTransfer = false; tx.isHidden = false; tx.transferPartner = null; });
+            for (let i = 0; i < transactions.length; i++) {
+                let t1 = transactions[i]; if (t1.isTransfer) continue;
+                for (let j = 0; j < transactions.length; j++) {
+                    let t2 = transactions[j];
+                    if (i === j || t2.isTransfer || t1.amount + t2.amount !== 0 || t1.amount === 0) continue;
+                    let days = Math.abs(t1.date - t2.date) / 86400000;
+                    let matched = transferRules.some(r => days <= r.days && 
+                        ((t1.account.toLowerCase().includes(r.acc1) && t1.desc.toLowerCase().includes(r.desc1) && t2.account.toLowerCase().includes(r.acc2) && t2.desc.toLowerCase().includes(r.desc2)) ||
+                         (t2.account.toLowerCase().includes(r.acc1) && t2.desc.toLowerCase().includes(r.desc1) && t1.account.toLowerCase().includes(r.acc2) && t1.desc.toLowerCase().includes(r.desc2))));
+                    if (matched || (days < 1 && t1.account !== t2.account)) {
+                        t1.isTransfer = true; t2.isTransfer = true;
+                        t1.transferPartner = t2; t2.transferPartner = t1;
+                        if (t1.amount > 0) t1.isHidden = true; else t2.isHidden = true;
+                        t1.category = "Transfers"; t2.category = "Transfers"; break;
+                    }
+                }
+            }
+        }
+
+        function guessCategory(desc, amount) {
+            const norm = desc.replace(/[0-9]/g, '').trim().toLowerCase();
+            if (customCategoryMap[norm]) return customCategoryMap[norm];
+            const d = desc.toLowerCase();
+            if (d.includes("wawa") || d.includes("starbucks") || d.includes("mcdonald")) return "Food";
+            if (d.includes("amazon") || d.includes("target")) return "Shopping";
+            return amount > 0 ? "Income" : "Other";
+        }
+
+        function getCategoryColor(cat) {
+            const map = { Food: "#ff0000", Transportation: "#ff8800", Shopping: "#9900ff", Education: "#0066ff", Subscription: "#00cc99", Transfers: "#0055ff", Income: "#00cc00", Dividends: "#00ff00", Entertainment: "#ff00cc", "Clothes+Haircuts": "#ff5500", Health: "#ff0066", Other: "#000000" };
+            return map[cat] || "#000000";
+        }
+
+        function renderTable() {
+            const tbody = document.getElementById("txnTable");
+            tbody.innerHTML = "";
+            allTransactions.forEach(tx => {
+                if (tx.isHidden) return;
+                const row = document.createElement("tr");
+                const monthTag = `${tx.date.getFullYear()}-${String(tx.date.getMonth() + 1).padStart(2, "0")}`;
+                row.setAttribute("data-month", monthTag);
+
+                let displayDesc = tx.desc;
+                let displayAmount = tx.amount;
+                let displayAccount = tx.account;
+                let amountColor = tx.amount < 0 ? "#e74c3c" : "#27ae60";
+                let amountSign = tx.amount > 0 ? "+" : "";
+                let isConsolidatedTransfer = false;
+
+                if (tx.isTransfer && tx.transferPartner) {
+                    const partner = tx.transferPartner;
+                    const src = tx.amount < 0 ? tx.account : partner.account;
+                    const dst = tx.amount > 0 ? tx.account : partner.account;
+                    displayDesc = `$${Math.abs(tx.amount).toFixed(2)} transfer: ${src} -> ${dst}`;
+                    displayAmount = Math.abs(tx.amount);
+                    displayAccount = "Transfer";
+                    amountColor = "#0055ff";
+                    amountSign = "";
+                    isConsolidatedTransfer = true;
+                }
+
+                row.innerHTML = `
+                    <td style="text-align:center;"><input type="checkbox" class="isolate-cb" data-id="${tx.id}" ${tx.isolate ? 'checked' : ''} ${isConsolidatedTransfer ? 'disabled' : ''}></td>
+                    <td style="font-weight:bold;">${tx.date.toLocaleDateString()}</td>
+                    <td title="${tx.desc}">${displayDesc.length > 50 ? displayDesc.substring(0,50)+'...' : displayDesc}</td>
+                    <td style="color:${amountColor}; font-weight:bold;">${amountSign}${displayAmount.toFixed(2)}</td>
+                    <td style="background:${getCategoryColor(tx.category)};"><select class="cat-select" data-id="${tx.id}" style="color:white; background:transparent; border:none; font-weight:bold; width:100%; text-shadow:1px 1px 2px #000; cursor:pointer;" ${isConsolidatedTransfer ? 'disabled' : ''}>
+                        ${(tx.amount > 0 ? INCOME_CATS : EXPENSE_CATS).map(c => `<option value="${c}" ${tx.category===c?'selected':''}>${c}</option>`).join('')}
+                    </select></td>
+                    <td>${displayAccount}</td>
+                    <td><input type="text" class="note-input" data-id="${tx.id}" value="${tx.notes}" style="width:95%;"></td>
+                `;
+                tbody.appendChild(row);
+            });
+            
+            document.querySelectorAll('.cat-select').forEach(sel => sel.addEventListener('change', handleCategoryChange));
+            document.querySelectorAll('.isolate-cb').forEach(cb => cb.addEventListener('change', handleIsolateChange));
+            document.querySelectorAll('.note-input').forEach(inp => inp.addEventListener('change', (e) => {
+                const tx = allTransactions.find(t => t.id === e.target.dataset.id);
+                tx.notes = e.target.value; customNotes[tx.id] = tx.notes;
+                localStorage.setItem("mm_customNotes", JSON.stringify(customNotes));
+            }));
+        }
+
+        function handleCategoryChange(e) {
+            const tx = allTransactions.find(t => t.id === e.target.dataset.id);
+            if (!tx) return;
+            
+            tx.category = e.target.value;
+            
+            if(tx.isolate) {
+                isolatedMap[tx.id] = { isolate:true, category:tx.category };
+                localStorage.setItem("mm_isolatedTxs", JSON.stringify(isolatedMap));
+            } else {
+                customCategoryMap[tx.normalizedDesc] = tx.category;
+                localStorage.setItem("mm_customCategories", JSON.stringify(customCategoryMap));
+                
+                allTransactions.forEach(t => { 
+                    if(t.normalizedDesc === tx.normalizedDesc && !t.isolate && !t.isTransfer) {
+                        t.category = tx.category; 
+                    }
+                });
+            }
+            renderTable(); updateCharts();
+        }
+
+        function handleIsolateChange(e) {
+            const tx = allTransactions.find(t => t.id === e.target.dataset.id);
+            if (tx) {
+                tx.isolate = e.target.checked;
+                if (tx.isolate) {
+                    isolatedMap[tx.id] = { isolate: true, category: tx.category };
+                } else {
+                    delete isolatedMap[tx.id]; 
+                    tx.category = guessCategory(tx.desc, tx.amount); 
+                }
+                localStorage.setItem("mm_isolatedTxs", JSON.stringify(isolatedMap));
+                renderTable(); updateCharts();
+            }
+        }
+
+        function updateCharts() {
+            const monthly = {};
+            [...allTransactions].sort((a,b)=>a.date-b.date).forEach(tx => {
+                const m = tx.date.toISOString().substring(0,7);
+                if(!monthly[m]) monthly[m] = { pos:0, neg:0, net:0 };
+                if(!tx.isTransfer && tx.category !== "Transfers") {
+                    if(tx.amount > 0) monthly[m].pos += tx.amount; else monthly[m].neg += tx.amount;
+                }
+                monthly[m].net = allTransactions.filter(t => t.date <= tx.date).reduce((sum, t) => sum + t.amount, 0);
+            });
+            const labels = Object.keys(monthly);
+            const scrollFunc = (e, els) => { if(els.length) { const row = document.querySelector(`tr[data-month="${labels[els[0].index]}"]`); if(row) row.scrollIntoView({behavior:"smooth"}); } };
+            if(netChart) netChart.destroy();
+            netChart = new Chart(document.getElementById("netWorthChart"), { type:'line', data:{ labels, datasets:[{ label:'Net Worth', data:labels.map(l=>monthly[l].net), borderColor:'#8e44ad', fill:true, backgroundColor:'rgba(142,68,173,0.1)' }] }, options: { maintainAspectRatio:false, onClick: scrollFunc } });
+            if(posNegChart) posNegChart.destroy();
+            posNegChart = new Chart(document.getElementById("posNegChart"), { type:'bar', data:{ labels, datasets:[{ label:'Income', data:labels.map(l=>monthly[l].pos), backgroundColor:'#27ae60' }, { label:'Expenses', data:labels.map(l=>monthly[l].neg), backgroundColor:'#e74c3c' }] }, options: { maintainAspectRatio:false, scales: { x:{stacked:true}, y:{stacked:true} }, onClick: scrollFunc } });
+            updatePieCharts();
+        }
+
+        function updatePieCharts() {
+            const startStr = document.getElementById("startDate").value, endStr = document.getElementById("endDate").value;
+            const start = startStr ? new Date(startStr) : new Date(0), end = endStr ? new Date(endStr) : new Date(); end.setHours(23,59,59);
+            const expData = {}, incData = {};
+            allTransactions.forEach(tx => {
+                if(tx.date >= start && tx.date <= end && !tx.isTransfer && tx.category !== "Transfers") {
+                    if(tx.amount < 0) expData[tx.category] = (expData[tx.category]||0) + Math.abs(tx.amount);
+                    else if (tx.amount > 0) incData[tx.category] = (incData[tx.category]||0) + tx.amount;
+                }
+            });
+            const renderPie = (canvas, data) => {
+                const labels = Object.keys(data);
+                return new Chart(canvas, { type:'pie', data:{ labels, datasets:[{ data:Object.values(data), backgroundColor:labels.map(getCategoryColor), borderColor:'#000', borderWidth:2 }] }, options:{ plugins:{legend:{position:'right'}}}});
+            };
+            if(pieChartExpenses) pieChartExpenses.destroy(); pieChartExpenses = renderPie(document.getElementById("pieChartExpenses"), expData);
+            if(pieChartIncome) pieChartIncome.destroy(); pieChartIncome = renderPie(document.getElementById("pieChartIncome"), incData);
+        }
+    </script>
+</body>
+</html>

@@ -1,0 +1,357 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Money Megaboard {{ active_version }} (Python Edition)</title>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <style>
+        body {
+            background-color: #ffffff !important;
+            color: #000000 !important;
+            margin: 0;
+            font-family: sans-serif;
+        }
+
+        input,
+        select,
+        button {
+            border: 2px solid #000000;
+            outline: none;
+            font-family: sans-serif;
+        }
+
+        input::placeholder {
+            color: #000000;
+            opacity: 0.6;
+        }
+
+        input[type="file"] {
+            color: #000000 !important;
+            background: #ffffff;
+        }
+
+        input[type="file"]::-webkit-file-upload-button {
+            border: 2px solid #000000;
+            background: #ffffff;
+            color: #000000;
+            font-weight: bold;
+            padding: 5px 10px;
+            cursor: pointer;
+        }
+
+        table th,
+        table td {
+            border: 2px solid #000000 !important;
+        }
+
+        hr {
+            border: 1px solid #000000;
+        }
+
+        .main-container {
+            max-width: 1300px;
+            margin: 0 auto;
+            padding: 20px;
+            background-color: #ffffff;
+            color: #000000;
+        }
+    </style>
+</head>
+
+<body>
+
+    <div class="main-container">
+        <!-- CHANGELOG HEADER -->
+        <h2 style="color: #000000; border-bottom: 3px solid #000000; padding-bottom: 5px; margin-bottom: 5px;">Money
+            Megaboard
+            <select id="versionSwitcher" style="font-size: 0.75em; padding: 2px 6px; border: 2px solid #000; background: #fff; color: #000; font-weight: bold; cursor: pointer; vertical-align: middle;"
+                onchange="if(this.value){this.disabled=true;fetch('/api/switch-version',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({version:this.value})}).then(r=>r.json()).then(()=>{setTimeout(()=>{(function tryReload(){fetch('/').then(()=>location.reload()).catch(()=>setTimeout(tryReload,500))})()},1000)}).catch(()=>setTimeout(()=>location.reload(),2000))}">
+                {% for v in all_versions %}
+                <option value="{{ v }}" {% if v == active_version %}selected{% endif %}>{{ v }}</option>
+                {% endfor %}
+            </select>
+            (Python Edition)</h2>
+        <div
+            style="font-family: monospace; font-size: 11px; margin-bottom: 20px; white-space: pre-wrap; background: #fdfdfd; padding: 10px; border: 1px dashed #000; max-height: 150px; overflow-y: auto;">
+            CHANGELOG:
+            v3.2.2 (Features & Fixes)
+            Features: Compacted Category/Balance Swatches into sleek dropdown combinations. Automatically linked Ghost
+            transfers into the Balance Graph. Explicitly fixed Spending/Income colors for pie charts and categorized
+            "Shopping" & "Entertainment" into Expense.
+            Bug Fixes: Completely rebuilt Notes CSV Parsing to respect inline quotes and natively render multiline
+            fields. Fixed Ghost Transfer Table representation. Added Ghost CSV Downloads proxy feature.
+
+            v3.2.1 (Polish & Features)
+            Features: Upgraded the CSV Mapper UI to use native drag-and-drop instead of dropdown selects. Upgraded the
+            Category Colors section to use 20 pre-defined sleek color swatches. Added dynamic color matching to the
+            transaction table, turning keywords and account names into the assigned Category colors automatically.
+            Changed the default auto-transfer window from 1 day to 3 days.
+
+            v3.2.0 (Features)
+            Features: Added Ghost CSV tracking to highlight transfer rules targeting unconnected external accounts.
+            Introduced customizable Category Colors that apply to visual table highlights and charts. Expanded the Net
+            Worth Graph to optionally show cumulative timelines for individual accounts alongside the master Net Worth
+            line. Upgraded the CSV Mapper UI to accommodate multi-select for Notes concatenation and toggleable split
+            Credit/Debit mappings vs unified Amount mappings. Layout tweaked to position PayPal download box in-line
+            with the primary file dialog.
+
+            v3.1.3 (Bug Fixes)
+            Bug Fixes: Restored javascript backwards-compatibility for parsing standard CSVs that was lost during the
+            batching upgrade. Properly formatted changelog history to distinguish Bug Fixes and Features.
+
+            v3.1.2 (Bug Fixes)
+            Bug Fixes: Reordered changelog to newest-first. Replaced native Clear Data confirm dialog with custom HTML
+            modal to prevent browser auto-dismissal. Rewrote backend PayPal endpoint and JS to accept multiple CSV files
+            simultaneously, stitching them into a unified Master History to prevent year overwriting. Fixed transfer
+            auto-linker bug where default matching was skipped if custom rules are empty.
+
+            v3.1.1 (Bug Fixes)
+            Bug Fixes: Replaced browser NaN with Python fillna("") allowing Paypal uploads to correctly load without
+            missing columns. Adding e.preventDefault() fixed the Clear Data button being instantly dismissed.
+
+            v3.1.0 (Features)
+            Features: Integrated pandas-powered PayPal endpoint to parse and clean raw PayPal activity exports natively.
+            Output files are made available via unique download links.
+
+            v3.0.0 (Major)
+            Features: Complete rewrite to Python (Flask). Secure local JSON file persistence. Native Python datetime and
+            CSV processing.
+
+            v2.3.1
+            Features: Upgraded category colors to be intensely vibrant with readable text shadows.
+            Bug Fixes: Fixed CSS !important overrides that were causing white-on-white buttons. Forced CSV upload text
+            to black. Restored the Income/Expense split inside the table dropdowns. Fixed a bug where Pie Charts were
+            missing certain categories.
+
+            v2.3.0 (Major)
+            Features: Enforced pure #000000 global CSS (killed all browser-default grey in inputs/graphs). Built a
+            "Transfer Rules" UI for multi-day and keyword linking (specifically fixes PayPal transfer gaps). Cleaned the
+            Account column to hide the (group) tags from the UI.
+            Bug Fixes: Restored all categories to Pie Charts with vibrant colors.
+
+            v2.2.3
+            Features: ZERO GREY policy enforced (all borders and text forced to black). Added (tag) grouping so uploaded
+            files like name(fmfcu) map under "FMFCU". Removed Groceries and Investment categories to streamline options.
+            Advanced PayPal sanitizer built to identify and remove duplicate "Shopping Cart Item" rows.
+            Bug Fixes: Fixed Pie Charts to strictly filter by their respective Income/Expense lists and appropriately
+            size slices when refunds occur.
+
+            v2.2.2
+            Features: Made line and bar graphs much taller. Split the Pie Chart into two distinct charts: Spending
+            (Expenses) and Income. Built-in PayPal CSV sanitizer started (automatically ignores pending/authorization
+            rows).
+            Bug Fixes: Fixed category word matching using strict regex word boundaries. Forced a pure white background
+            to kill remaining host-site grey bleed.
+
+            v2.2.1
+            Features: Removed grey container backgrounds for a cleaner look. Grouped split CSV column mappings (Name#1 +
+            Name#2 share the Name mapping). Enlarged charts for better visibility. Stacked positive and negative bars
+            below 0 on the Pos/Neg chart. Moved the Notes column to the far right of the table.
+            Bug Fixes: Kept account name case sensitivity intact. Fixed an overlapping category bug (e.g., "Applebee's"
+            triggering the "Apple" category).
+
+            v2.2.0
+            Features: Split Income and Expense categories. Added new categories: Entertainment, Dividends,
+            Clothes+Haircuts, and Health. Built an interactive CSV Column Mapping UI to handle non-standard bank
+            exports. Added an editable "Notes" column to the transaction table.
+            Bug Fixes: Rewrote the CSV parser to perfectly handle commas inside quotes and empty cells. Fixed a bug with
+            chart clicking navigation.
+
+            v2.1.0
+            Features: Renamed project to "Money Megaboard". Added localStorage memory to permanently remember custom
+            dropdown categories and isolated items between sessions. Added a "Clear Saved Data" button.
+            Bug Fixes: Reverted CSV parsing logic due to a regression bug identified in v2.0.1.
+
+            v2.0.1
+            Features: Grouped split files on upload. Unmatched/unaccounted transfers now visually highlight in red.
+            Bug Fixes: Fixed negative number parsing to properly handle parentheses and minus signs.
+
+            v2.0.0 (Major)
+            Features: Redesign: Unlimited dynamic CSV uploads to replace the static checking/savings inputs. Interactive
+            dropdown categories in the table for manual overrides. Isolate checkboxes introduced to prevent bulk
+            category updates from affecting specific rows. Pie chart introduced. Unified transfer rows (visually
+            consolidates linked transfers into a single line).
+
+            v1.1.0
+            Features: Split checking/savings inputs (added separate upload fields). Added a sticky header to the table.
+            Basic transfer linking/detection between accounts. Added table sorting.
+
+            v1.0.0 (Original)
+            Features: Initial static checking and savings dashboard structure. CSV file uploading and parsing for
+            standard bank columns (Date, Description, Amount, Debit/Credit, Balance). Automatic transaction
+            categorization using hardcoded keyword matching. Transaction table displaying Date, Description, Amount,
+            Category, and Account. Visual styling for the table, including colored amount text (red for negative, green
+            for positive) and colored category badges. Interactive Monthly Net Worth line chart (via Chart.js).
+            Interactive Category spending bar chart (via Chart.js). Clickable chart elements that smoothly scroll the
+            page to the corresponding month in the transaction table, complete with a temporary yellow highlight
+            animation.</div>
+
+
+        <div style="margin-bottom: 30px; padding: 15px; background: #ffffff; border: 3px solid #000000;">
+            <div style="display: flex; justify-content: space-between; align-items: flex-start;">
+                <div style="display: flex; gap: 20px; align-items: flex-start;">
+                    <div>
+                        <strong>Upload All Account CSVs:</strong><br>
+                        <span style="font-size: 12px; color: #000000;">Files sharing a tag like "name(fmfcu)" will be
+                            mapped
+                            together.</span><br><br>
+                        <input type="file" id="csvFiles" accept=".csv" multiple style="padding: 5px;" />
+                    </div>
+
+                    <div id="paypalDownloads"
+                        style="display: none; padding: 10px; background: #e8f4f8; border: 1px solid #2980b9;">
+                        <strong>PayPal CSV Detected and Cleaned!</strong><br>
+                        <div style="margin-top: 5px;">
+                            <a href="{{ url_for('static', filename='downloads/PayPal_Master_History.csv') }}" download
+                                style="font-size: 13px; color: #2980b9; font-weight: bold; margin-right: 15px;">📥
+                                Download
+                                Cleaned</a>
+                            <a href="{{ url_for('static', filename='downloads/PayPal_DEBUG_LOG.csv') }}" download
+                                style="font-size: 13px; color: #8e44ad; font-weight: bold;">📥 Download Debug</a>
+                        </div>
+                    </div>
+
+
+                </div>
+                <div>
+                    <button id="clearStorageBtn"
+                        style="padding: 8px 12px; background: #e74c3c; color: #ffffff; cursor: pointer; font-weight: bold;">
+                        Clear Saved Data
+                    </button>
+                    <span id="saveStatus"
+                        style="font-size:12px; font-weight:bold; margin-left:10px; color:#27ae60;"></span>
+                </div>
+            </div>
+
+            <div id="mappingContainer"
+                style="margin-top: 20px; display: none; background: #ffffff; padding: 15px; border: 2px dashed #000000;">
+                <h3 style="margin-top: 0; color: #000000;">Map CSV Columns</h3>
+                <div id="mappingList"></div>
+                <button id="processMappedDataBtn"
+                    style="margin-top: 15px; padding: 8px 15px; background: #27ae60; color: #ffffff; cursor: pointer; font-weight: bold;">
+                    Confirm Mappings & Load Data
+                </button>
+            </div>
+        </div>
+
+        <div style="margin-bottom: 30px; padding: 15px; background: #ffffff; border: 3px solid #000000;">
+            <div style="display: flex; justify-content: space-between; align-items: center;">
+                <h3 style="margin: 0; color: #000000;">Transfer Rules (Auto-Linker)</h3>
+                <button id="addTransferRuleBtn"
+                    style="padding: 5px 10px; background: #000000; color: #ffffff; cursor: pointer; font-weight: bold;">+
+                    Add Rule</button>
+            </div>
+            <p style="font-size: 12px; margin-top: 5px;">Define keywords and a day-range to link transfers.</p>
+            <div id="transferRulesContainer"
+                style="margin-top: 10px; display: flex; flex-direction: column; gap: 10px;"></div>
+            <button id="applyRulesBtn"
+                style="margin-top: 15px; padding: 5px 10px; background: #2980b9; color: #ffffff; cursor: pointer; font-weight: bold; display: none;">Apply
+                Rules to Current Data (Reload Required)</button>
+
+            <div id="ghostCsvContainer"
+                style="display: none; margin-bottom: 20px; padding: 15px; background: #ffffff; border: 3px solid #e67e22;">
+                <div style="display: flex; flex-direction: column; gap: 10px;">
+                    <h3 style="color: #e67e22; margin: 0;">Tracked Ghost CSVs</h3>
+                    <p style="font-size: 11px; margin: 0 0 10px 0;">These external accounts are actively monitored for
+                        transfers despite missing CSV uploads.</p>
+                    <button id="downloadGhostCsvBtn"
+                        style="padding: 5px 10px; background: #000000; color: #ffffff; cursor: pointer; font-weight: bold; width: fit-content;">Download
+                        Ghost Tracking CSV</button>
+                    <div id="ghostCsvList" style="display: flex; gap: 10px; flex-wrap: wrap;"></div>
+                </div>
+            </div>
+        </div>
+
+        <div style="display: flex; flex-direction: column; gap: 40px; margin-bottom: 40px;">
+            <div
+                style="width: 100%; background: #ffffff; padding: 15px; border: 3px solid #000000; height: 500px; box-sizing: border-box;">
+                <canvas id="netWorthChart"></canvas>
+            </div>
+            <div
+                style="width: 100%; background: #ffffff; padding: 15px; border: 3px solid #000000; height: 500px; box-sizing: border-box;">
+                <canvas id="posNegChart"></canvas>
+            </div>
+        </div>
+
+
+        <div style="margin-bottom: 30px; padding: 15px; background: #ffffff; border: 3px solid #000000;">
+            <h3 style="color: #000000; margin-top: 0;">Category Breakdown</h3>
+            <label style="font-weight: bold;">Start: <input type="date" id="startDate" style="padding: 2px;"></label>
+            <label style="margin-left: 10px; font-weight: bold;">End: <input type="date" id="endDate"
+                    style="padding: 2px;"></label>
+            <button id="updatePieBtn"
+                style="margin-left: 10px; padding: 5px 10px; background: #000000; color: #ffffff; cursor: pointer; font-weight: bold;">Update
+                Pie Charts</button>
+
+            <div style="display: flex; justify-content: space-around; flex-wrap: wrap; margin-top: 20px;">
+                <div style="width: 45%; min-width: 300px; text-align: center;">
+                    <h4 style="color: #e74c3c; text-decoration: underline;">Spending</h4>
+                    <canvas id="pieChartExpenses"></canvas>
+                </div>
+                <div style="width: 45%; min-width: 300px; text-align: center;">
+                    <h4 style="color: #27ae60; text-decoration: underline;">Income</h4>
+                    <canvas id="pieChartIncome"></canvas>
+                </div>
+            </div>
+        </div>
+
+        <div style="margin-bottom: 30px; padding: 15px; background: #ffffff; border: 3px solid #000000;">
+            <div style="display: flex; gap: 40px; flex-wrap: wrap;">
+                <div>
+                    <h3 style="color: #000000; margin-top: 0;">Category Colors</h3>
+                    <div id="categoryColorContainer"></div>
+                </div>
+                <div>
+                    <h3 style="color: #000000; margin-top: 0;">Balance Colors</h3>
+                    <p style="font-size: 12px; margin-top: 0;">Select an account to customize its color.</p>
+                    <div id="balanceColorContainer"></div>
+                </div>
+            </div>
+        </div>
+
+        <h3 style="color: #000000;">Transactions</h3>
+        <div id="tableContainer" style="max-height:600px; overflow:auto; border:3px solid #000000; position:relative;">
+            <table style="font-size:12px; width:100%; border-collapse:collapse; text-align: left; background: #ffffff;">
+                <thead style="position:sticky; top:0; background:#ffffff; z-index:1;">
+                    <tr style="border-bottom: 3px solid #000000;">
+                        <th style="padding: 8px; text-align:center;">Isolate</th>
+                        <th style="padding: 8px;">Date</th>
+                        <th style="padding: 8px;">Description</th>
+                        <th style="padding: 8px;">Amount</th>
+                        <th style="padding: 8px; min-width: 140px;">Category</th>
+                        <th style="padding: 8px;">Account</th>
+                        <th style="padding: 8px; width: 25%;">Notes</th>
+                    </tr>
+                </thead>
+                <tbody id="txnTable"></tbody>
+            </table>
+        </div>
+    </div>
+
+    <!-- Custom Modal Overlay -->
+    <div id="customModalOverlay"
+        style="display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.5); z-index: 1000; justify-content: center; align-items: center;">
+        <div
+            style="background: #ffffff; padding: 30px; border: 4px solid #000000; box-shadow: 10px 10px 0px rgba(0,0,0,0.3); max-width: 400px; text-align: center;">
+            <h2 style="margin-top: 0; color: #e74c3c; border-bottom: 2px solid #000000; padding-bottom: 10px;">Warning
+            </h2>
+            <p style="font-weight: bold; font-size: 16px; margin: 20px 0;">Are you sure you want to clear ALL saved
+                settings and files from the server?</p>
+            <p style="font-size: 12px; margin-bottom: 25px;">This action cannot be undone.</p>
+            <div style="display: flex; justify-content: space-around;">
+                <button id="modalCancelBtn"
+                    style="padding: 10px 20px; font-weight: bold; cursor: pointer; border: 2px solid #000000; background: #ecf0f1;">Cancel</button>
+                <button id="modalConfirmBtn"
+                    style="padding: 10px 20px; font-weight: bold; cursor: pointer; border: 2px solid #000000; background: #e74c3c; color: white;">Yes,
+                    Delete Data</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Frontend logic that communicates with Python API -->
+    <script src="{{ url_for('static', filename='app.js') }}"></script>
+</body>
+
+</html>
