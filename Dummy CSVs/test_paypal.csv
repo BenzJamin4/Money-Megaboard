@@ -1,0 +1,2 @@
+"Date","Time","TimeZone","Description","Currency","Gross","Fee","Net","Balance","Transaction ID","From Email Address","Name","Bank Name","Bank Account","Shipping amount","Sales Tax","Invoice ID","Reference Txn ID"
+"06/23/2023","18:23:45","PDT","Payment to Giant","USD","-100.00","0.00","-100.00","0.00","12345ABCD","me@email.com","Giant Foods","My Bank","*1234","0.00","0.00","",""

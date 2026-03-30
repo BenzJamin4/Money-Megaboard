@@ -1,0 +1,34 @@
+# Virtual environments
+**/venv/
+__pycache__/
+*.pyc
+
+# OS files
+.DS_Store
+Thumbs.db
+Desktop.ini
+
+# Logs
+*.log
+
+# Runtime / user data (generated at runtime, not part of source)
+megaboard_data.json
+app_data.json
+**/downloads/*.csv
+PayPalProject/*.csv
+
+# Secrets
+.github_token
+
+# PyInstaller build artifacts
+build/
+dist/
+*.spec
+
+# IDE / editor files
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+git_backup/
