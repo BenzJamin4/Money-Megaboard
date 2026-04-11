@@ -1,8 +1,5 @@
-use AppleScript version "2.4"
-use scripting additions
-
 set app_path to POSIX path of (path to me)
-set project_dir to POSIX path of (container of (path to me))
+set project_dir to «event sysoexec» ("dirname " & quoted form of (text 1 thru -2 of app_path))
 
 set shellCode to "
 APP_DIR=\"$1\"
@@ -73,4 +70,4 @@ done
 } &
 "
 
-set launch_result to «event sysoexec» ("/bin/bash -c " & quoted form of shellCode & " _ " & quoted form of project_dir)
+«event sysoexec» ("/bin/bash -c " & quoted form of shellCode & " _ " & quoted form of project_dir)
