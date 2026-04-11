@@ -39,13 +39,17 @@ PAYPAL_ALWAYS_REMOVE_TYPES = {
 }
 PAYPAL_FUNDING_TYPES = {"general card deposit", "bank deposit to pp account"}
 PAYPAL_EXTERNALLY_FUNDED_PAYMENT_TYPES = {"preapproved payment bill user payment"}
-PAYPAL_SETTLED_MERCHANT_TYPES = {
+PAYPAL_ALWAYS_EXTERNAL_PAYMENT_TYPES = {"express checkout payment"}
+PAYPAL_BALANCE_EFFECTING_SETTLED_TYPES = {
     "general paypal debit card transaction",
-    "preapproved payment bill user payment",
-    "express checkout payment",
-    "mobile payment",
     "donation payment",
 }
+PAYPAL_SETTLED_MERCHANT_TYPES = (
+    PAYPAL_BALANCE_EFFECTING_SETTLED_TYPES |
+    PAYPAL_EXTERNALLY_FUNDED_PAYMENT_TYPES |
+    PAYPAL_ALWAYS_EXTERNAL_PAYMENT_TYPES |
+    {"mobile payment"}
+)
 PAYPAL_HELPER_COLUMNS = [
     "_Timestamp",
     "_Amount_Num",
@@ -167,7 +171,7 @@ def normalize_paypal_dataframe(df):
 def paypal_group_has_settled_partner(keep_rows, row_idx, row):
     same_name_mask = keep_rows['_Name_Key'].eq(row['_Name_Key'])
     same_amount_mask = keep_rows['_Abs_Amount'].eq(row['_Abs_Amount'])
-    settled_mask = keep_rows['_Type_Key'].isin(PAYPAL_SETTLED_MERCHANT_TYPES)
+    settled_mask = keep_rows['_Type_Key'].isin(PAYPAL_BALANCE_EFFECTING_SETTLED_TYPES)
     return ((keep_rows.index != row_idx) & same_name_mask & same_amount_mask & settled_mask).any()
 
 def paypal_group_has_matching_partner(keep_rows, row_idx, row, type_keys=None, require_non_paypal=False):
@@ -180,7 +184,7 @@ def paypal_group_has_matching_partner(keep_rows, row_idx, row, type_keys=None, r
 
 def paypal_group_has_funding_partner(keep_rows, row_idx, row):
     settled_spend_mask = (
-        keep_rows['_Type_Key'].isin(PAYPAL_SETTLED_MERCHANT_TYPES) &
+        keep_rows['_Type_Key'].isin(PAYPAL_BALANCE_EFFECTING_SETTLED_TYPES) &
         keep_rows['_Amount_Num'].lt(0) &
         keep_rows['_Abs_Amount'].eq(row['_Abs_Amount'])
     )
@@ -199,6 +203,65 @@ def paypal_group_has_external_funding_pair(keep_rows, row_idx, row):
         keep_rows['_Abs_Amount'].eq(row['_Abs_Amount'])
     )
     return ((keep_rows.index != row_idx) & funding_mask).any()
+
+def paypal_group_has_duplicate_chain(group_rows, row_idx, row):
+    matching_rows = group_rows[
+        (group_rows.index != row_idx) &
+        group_rows['_Abs_Amount'].eq(row['_Abs_Amount'])
+    ]
+    if len(matching_rows) < 2:
+        return False
+
+    negative_non_paypal_rows = matching_rows[
+        matching_rows['_Amount_Num'].lt(0) &
+        ~matching_rows['_Is_PayPal_Name']
+    ]
+    if negative_non_paypal_rows.empty:
+        return False
+
+    chain_types = (
+        PAYPAL_SETTLED_MERCHANT_TYPES |
+        PAYPAL_AUTH_TYPES |
+        PAYPAL_FUNDING_TYPES |
+        {"other", "void of authorization"}
+    )
+    return matching_rows['_Type_Key'].isin(chain_types).any()
+
+def paypal_remove_matching_group_rows(master_df, group_rows, row, type_keys, reason, same_name=False):
+    removal_mask = (
+        master_df.index.isin(group_rows.index) &
+        master_df['Status_Debug'].eq('KEEP') &
+        master_df['_Type_Key'].isin(type_keys) &
+        master_df['_Abs_Amount'].eq(row['_Abs_Amount'])
+    )
+    if same_name and row['_Name_Key']:
+        removal_mask &= master_df['_Name_Key'].eq(row['_Name_Key'])
+    master_df.loc[removal_mask, 'Status_Debug'] = reason
+
+def paypal_remove_external_payment_chain(master_df, group_rows, idx, row, payment_reason, funding_reason, auth_reason):
+    master_df.at[idx, 'Status_Debug'] = payment_reason
+    paypal_remove_matching_group_rows(
+        master_df,
+        group_rows,
+        row,
+        PAYPAL_FUNDING_TYPES,
+        funding_reason
+    )
+    paypal_remove_matching_group_rows(
+        master_df,
+        group_rows,
+        row,
+        PAYPAL_AUTH_TYPES,
+        auth_reason,
+        same_name=True
+    )
+    paypal_remove_matching_group_rows(
+        master_df,
+        group_rows,
+        row,
+        {PAYPAL_HOLD_REVERSAL_TYPE},
+        'REMOVED: PayPal Duplicate Chain Hold Reversal'
+    )
 
 def paypal_rows_match_external_funding(payment_row, funding_row):
     if pd.isna(payment_row['_Balance_Num']) or pd.isna(funding_row['_Balance_Num']):
@@ -254,13 +317,8 @@ def clean_paypal_history_frame(df):
             active_rows['_Type_Key'].eq(PAYPAL_HOLD_REVERSAL_TYPE)
         ]
         for idx, row in hold_reversal_rows.iterrows():
-            if len(active_rows) >= 3 and paypal_group_has_matching_partner(
-                active_rows,
-                idx,
-                row,
-                require_non_paypal=True
-            ):
-                master_df.at[idx, 'Status_Debug'] = 'REMOVED: PayPal Hold Reversal'
+            if paypal_group_has_duplicate_chain(active_rows, idx, row):
+                master_df.at[idx, 'Status_Debug'] = 'REMOVED: PayPal Duplicate Chain Hold Reversal'
 
         paypal_other_rows = active_rows[
             active_rows['_Type_Key'].eq('other') & active_rows['_Is_PayPal_Name']
@@ -272,6 +330,23 @@ def clean_paypal_history_frame(df):
         active_rows = master_df.loc[group_rows.index]
         active_rows = active_rows[active_rows['Status_Debug'].eq('KEEP')]
 
+        always_external_rows = active_rows[
+            active_rows['_Type_Key'].isin(PAYPAL_ALWAYS_EXTERNAL_PAYMENT_TYPES) &
+            active_rows['_Amount_Num'].lt(0)
+        ]
+        for idx, row in always_external_rows.iterrows():
+            paypal_remove_external_payment_chain(
+                master_df,
+                group_rows,
+                idx,
+                row,
+                'REMOVED: Always External Express Checkout Payment',
+                'REMOVED: Funding Leg for Express Checkout Payment',
+                'REMOVED: Merchant Authorization Paired to Express Checkout Payment'
+            )
+
+        active_rows = master_df.loc[group_rows.index]
+        active_rows = active_rows[active_rows['Status_Debug'].eq('KEEP')]
         external_payment_rows = active_rows[
             active_rows['_Type_Key'].isin(PAYPAL_EXTERNALLY_FUNDED_PAYMENT_TYPES) &
             active_rows['_Amount_Num'].lt(0)
@@ -289,18 +364,15 @@ def clean_paypal_history_frame(df):
                     break
 
             if matched_funding is not None:
-                funding_idx, _ = matched_funding
-                master_df.at[idx, 'Status_Debug'] = 'REMOVED: External Funding Payment Duplicate'
-                master_df.at[funding_idx, 'Status_Debug'] = 'REMOVED: Funding Leg for External Payment'
-
-                auth_mask = (
-                    master_df.index.isin(group_rows.index) &
-                    master_df['Status_Debug'].eq('KEEP') &
-                    master_df['_Type_Key'].isin(PAYPAL_AUTH_TYPES) &
-                    master_df['_Name_Key'].eq(row['_Name_Key']) &
-                    master_df['_Abs_Amount'].eq(row['_Abs_Amount'])
+                paypal_remove_external_payment_chain(
+                    master_df,
+                    group_rows,
+                    idx,
+                    row,
+                    'REMOVED: External Funding Payment Duplicate',
+                    'REMOVED: Funding Leg for External Payment',
+                    'REMOVED: Merchant Authorization Paired to External Funding'
                 )
-                master_df.loc[auth_mask, 'Status_Debug'] = 'REMOVED: Merchant Authorization Paired to External Funding'
 
         active_rows = master_df.loc[group_rows.index]
         active_rows = active_rows[active_rows['Status_Debug'].eq('KEEP')]

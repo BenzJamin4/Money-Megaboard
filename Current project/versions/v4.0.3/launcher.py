@@ -25,6 +25,13 @@ if VERSION_DIR not in sys.path:
     sys.path.insert(0, VERSION_DIR)
 
 
+def cleanup_generated_downloads():
+    """Delete generated download caches across every version folder."""
+    versions_dir = Path(VERSION_DIR).resolve().parent
+    for downloads_dir in versions_dir.glob("v*/static/downloads"):
+        shutil.rmtree(downloads_dir, ignore_errors=True)
+
+
 def find_free_port():
     """Find an available port to avoid conflicts."""
     with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as s:
@@ -46,6 +53,8 @@ def main():
     # Import webview BEFORE changing cwd — its base_uri() resolves at import
     import webview
     import time
+
+    cleanup_generated_downloads()
 
     # Set cwd to the version folder so Flask finds templates/ and static/
     os.chdir(VERSION_DIR)
@@ -83,9 +92,7 @@ def main():
     try:
         webview.start()   # blocks until window is closed
     finally:
-        # When the window closes, remove the generated downloads folder entirely.
-        downloads_dir = Path(VERSION_DIR) / "static" / "downloads"
-        shutil.rmtree(downloads_dir, ignore_errors=True)
+        cleanup_generated_downloads()
 
     # Exit cleanly
     sys.exit(0)
