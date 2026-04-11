@@ -1,10 +1,19 @@
 CHANGELOG:
 
-v4.0.2 (PayPal Cleaner Polish & Bug Fixes)
+v4.0.3 (PayPal Cleaner & Download Cleanup Bug Fixes)
 Features:
+- None in this patch release.
+Bug Fixes:
+- The standalone launcher now deletes the entire generated downloads folder on close, so PayPal cleaned exports and debug logs do not persist after the app window is shut.
+- Reworked the PayPal cleaner so true two-row merchant hold/reversal pairs stay visible, while only PayPal's own multi-row scaffolding gets stripped out.
+- Removed duplicate externally funded PayPal rows for outbound friend payments and paired preapproved charges that are already represented by money movements in other imported accounts.
+
+v4.0.2 (PayPal Cleaner Bug Fixes)
+Features:
+- None in this patch release.
+Bug Fixes:
 - Added a more conservative PayPal cleanup engine that separates PayPal scaffolding rows from real ledger activity before exporting the master history.
 - Expanded the PayPal debug export so removed rows now state the specific cleanup reason instead of collapsing into a generic duplicate/funding label.
-Bug Fixes:
 - Fixed the PayPal cleaner dropping or keeping the wrong rows in authorization and funding chains, especially around debit card holds, paired funding legs, and same-timestamp merchant payment groups.
 - Repaired newer PayPal CSV batch handling so standalone withdrawals, deposits, refunds, and payout rows survive cleaning while denied rows and obvious PayPal-only noise are stripped out.
 
