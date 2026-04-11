@@ -1,5 +1,8 @@
+use AppleScript version "2.4"
+use scripting additions
+
 set app_path to POSIX path of (path to me)
-set project_dir to do shell script "dirname " & quoted form of (text 1 thru -2 of app_path)
+set project_dir to POSIX path of (container of (path to me))
 
 set shellCode to "
 APP_DIR=\"$1\"
@@ -14,7 +17,20 @@ VERSIONS_DIR=\"$APP_DIR/versions\"
 ACTIVE_FILE=\"$APP_DIR/shared/active_version.txt\"
 RESTART_FLAG=\"$APP_DIR/shared/restart_flag\"
 
+cleanup_downloads() {
+    if [ ! -d \"$VERSIONS_DIR\" ]; then
+        return
+    fi
+
+    for dir in \"$VERSIONS_DIR\"/v*/static/downloads; do
+        if [ -d \"$dir\" ]; then
+            rm -rf \"$dir\"
+        fi
+    done
+}
+
 rm -f \"$RESTART_FLAG\"
+cleanup_downloads
 
 {
 while true; do
@@ -45,6 +61,7 @@ while true; do
     fi
 
     \"$PYTHON\" \"$LATEST/launcher.py\" > /dev/null 2>&1
+    cleanup_downloads
 
     if [ -f \"$RESTART_FLAG\" ]; then
         rm -f \"$RESTART_FLAG\"
@@ -56,4 +73,4 @@ done
 } &
 "
 
-do shell script "/bin/bash -c " & quoted form of shellCode & " _ " & quoted form of project_dir
+set launch_result to «event sysoexec» ("/bin/bash -c " & quoted form of shellCode & " _ " & quoted form of project_dir)
