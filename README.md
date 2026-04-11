@@ -1,5 +1,13 @@
 CHANGELOG:
 
+v4.0.2 (PayPal Cleaner Polish & Bug Fixes)
+Features:
+- Added a more conservative PayPal cleanup engine that separates PayPal scaffolding rows from real ledger activity before exporting the master history.
+- Expanded the PayPal debug export so removed rows now state the specific cleanup reason instead of collapsing into a generic duplicate/funding label.
+Bug Fixes:
+- Fixed the PayPal cleaner dropping or keeping the wrong rows in authorization and funding chains, especially around debit card holds, paired funding legs, and same-timestamp merchant payment groups.
+- Repaired newer PayPal CSV batch handling so standalone withdrawals, deposits, refunds, and payout rows survive cleaning while denied rows and obvious PayPal-only noise are stripped out.
+
 v4.0.1 (Bug Fixes)
 Bug Fixes: 
 - Natively re-enabled the Version Selector dropdown directly inside the new standalone OS window framework, completely eliminating the need to use `server.py` in browsers just to downgrade.

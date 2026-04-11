@@ -1,0 +1,279 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Money Megaboard {{ active_version }} (Python Edition)</title>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <style>
+        body {
+            background-color: #ffffff !important;
+            color: #000000 !important;
+            margin: 0;
+            font-family: sans-serif;
+        }
+
+        input,
+        select,
+        button {
+            border: 2px solid #000000;
+            outline: none;
+            font-family: sans-serif;
+        }
+
+        input::placeholder {
+            color: #000000;
+            opacity: 0.6;
+        }
+
+        input[type="file"] {
+            color: #000000 !important;
+            background: #ffffff;
+        }
+
+        input[type="file"]::-webkit-file-upload-button {
+            border: 2px solid #000000;
+            background: #ffffff;
+            color: #000000;
+            font-weight: bold;
+            padding: 5px 10px;
+            cursor: pointer;
+        }
+
+        table th,
+        table td {
+            border: 2px solid #000000 !important;
+        }
+
+        hr {
+            border: 1px solid #000000;
+        }
+
+        .main-container {
+            max-width: 1300px;
+            margin: 0 auto;
+            padding: 20px;
+            background-color: #ffffff;
+            color: #000000;
+        }
+    </style>
+</head>
+
+<body>
+
+    <div class="main-container">
+        <!-- CHANGELOG HEADER -->
+        <h2 style="color: #000000; border-bottom: 3px solid #000000; padding-bottom: 5px; margin-bottom: 5px;">Money
+            Megaboard
+            <select id="versionSwitcher"
+                style="font-size: 0.75em; padding: 2px 6px; border: 2px solid #000; background: #fff; color: #000; font-weight: bold; cursor: pointer; vertical-align: middle;"
+                onchange="if(this.value){this.disabled=true;fetch('/api/switch-version',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({version:this.value})});}">
+                {% for v in all_versions %}
+                <option value="{{ v }}" {% if v==active_version %}selected{% endif %}>{{ v }}</option>
+                {% endfor %}
+            </select>
+            <button id="readmeChangelogBtn" style="font-size: 0.65em; padding: 3px 10px; background: #000; color: #fff; cursor: pointer; font-weight: bold; border: 2px solid #000; margin-left: 10px; vertical-align: middle; font-family: 'Jeepers', 'Scooby Doo', cursive;">CHANGELOG</button>
+        </h2>
+        <div
+            style="font-family: 'Comic Sans MS', 'Comic Sans', cursive; font-size: 12px; margin-bottom: 25px; margin-top: 15px; white-space: pre-wrap; background: #fff; padding: 15px; border: 2px solid #000; box-shadow: 4px 4px 0px #000;"><strong>v4.0.2 (PayPal Cleaner Polish & Bug Fixes)</strong>
+Features:
+- Added a more conservative PayPal cleanup engine that separates PayPal scaffolding rows from real ledger activity before exporting the master history.
+- Expanded the PayPal debug export so removed rows now state the specific cleanup reason instead of collapsing into a generic duplicate/funding label.
+Bug Fixes:
+- Fixed the PayPal cleaner dropping or keeping the wrong rows in authorization and funding chains, especially around debit card holds, paired funding legs, and same-timestamp merchant payment groups.
+- Repaired newer PayPal CSV batch handling so standalone withdrawals, deposits, refunds, and payout rows survive cleaning while denied rows and obvious PayPal-only noise are stripped out.</div>
+
+
+        <div style="margin-bottom: 30px; padding: 15px; background: #ffffff; border: 3px solid #000000;">
+            <div style="display: flex; justify-content: space-between; align-items: flex-start;">
+                <div style="display: flex; gap: 20px; align-items: flex-start;">
+                    <div>
+                        <strong>Upload All Account CSVs:</strong><br>
+                        <span style="font-size: 12px; color: #000000;">Files sharing a tag like "name(fmfcu)" will be
+                            mapped
+                            together.</span><br><br>
+                        <input type="file" id="csvFiles" accept=".csv" multiple style="padding: 5px;" />
+                        <br><br>
+                    </div>
+
+                    <div id="paypalDownloads"
+                        style="display: none; padding: 10px; background: #e8f4f8; border: 1px solid #2980b9;">
+                        <strong>PayPal CSV Detected and Cleaned!</strong><br>
+                        <div style="margin-top: 5px;">
+                            <a href="{{ url_for('static', filename='downloads/PayPal_Master_History.csv') }}" download
+                                style="font-size: 13px; color: #2980b9; font-weight: bold; margin-right: 15px;">📥
+                                Download
+                                Cleaned</a>
+                            <a href="{{ url_for('static', filename='downloads/PayPal_DEBUG_LOG.csv') }}" download
+                                style="font-size: 13px; color: #8e44ad; font-weight: bold;">📥 Download Debug</a>
+                        </div>
+                    </div>
+
+                    <button id="downloadGhostCsvBtn"
+                        style="padding: 10px 10px; background: #e67e22; color: #ffffff; cursor: pointer; font-weight: bold; height: fit-content; border: 2px solid #000; text-shadow: 1px 1px 1px #000; display: none;">Download
+                        Tracked Ghost CSVs</button>
+                </div>
+                <div>
+                    <button id="clearStorageBtn"
+                        style="padding: 8px 12px; background: #e74c3c; color: #ffffff; cursor: pointer; font-weight: bold;">
+                        Clear Saved Data
+                    </button>
+                    <span id="saveStatus"
+                        style="font-size:12px; font-weight:bold; margin-left:10px; color:#27ae60;"></span>
+                </div>
+            </div>
+
+            <div id="mappingContainer"
+                style="margin-top: 20px; display: none; background: #ffffff; padding: 15px; border: 2px dashed #000000;">
+                <h3 style="margin-top: 0; color: #000000;">Map CSV Columns</h3>
+                <div id="mappingList"></div>
+                <button id="processMappedDataBtn"
+                    style="margin-top: 15px; padding: 8px 15px; background: #27ae60; color: #ffffff; cursor: pointer; font-weight: bold;">
+                    Confirm Mappings & Load Data
+                </button>
+            </div>
+        </div>
+
+        <div style="margin-bottom: 30px; padding: 15px; background: #ffffff; border: 3px solid #000000;">
+            <div style="display: flex; justify-content: space-between; align-items: center;">
+                <h3 style="margin: 0; color: #000000;">Transfer Rules (Auto-Linker)</h3>
+                <button id="addTransferRuleBtn"
+                    style="padding: 5px 10px; background: #000000; color: #ffffff; cursor: pointer; font-weight: bold;">+
+                    Add Rule</button>
+            </div>
+            <p style="font-size: 12px; margin-top: 5px;">Define keywords and a day-range to link transfers.</p>
+            <div id="transferRulesContainer"
+                style="margin-top: 10px; display: flex; flex-direction: column; gap: 10px;"></div>
+            <button id="applyRulesBtn"
+                style="margin-top: 15px; padding: 5px 10px; background: #2980b9; color: #ffffff; cursor: pointer; font-weight: bold; display: none;">Apply
+                Rules to Current Data</button>
+        </div>
+
+        <div style="display: flex; flex-direction: column; gap: 40px; margin-bottom: 40px;">
+            <div
+                style="width: 100%; background: #ffffff; padding: 15px; border: 3px solid #000000; height: 500px; box-sizing: border-box;">
+                <canvas id="netWorthChart"></canvas>
+            </div>
+            <div
+                style="width: 100%; background: #ffffff; padding: 15px; border: 3px solid #000000; height: 500px; box-sizing: border-box;">
+                <canvas id="posNegChart"></canvas>
+            </div>
+        </div>
+
+
+        <div style="margin-bottom: 30px; padding: 15px; background: #ffffff; border: 3px solid #000000;">
+            <h3 style="color: #000000; margin-top: 0;">Category Breakdown</h3>
+            <label style="font-weight: bold;">Start: <input type="date" id="startDate" style="padding: 2px;"></label>
+            <label style="margin-left: 10px; font-weight: bold;">End: <input type="date" id="endDate"
+                    style="padding: 2px;"></label>
+            <button id="updatePieBtn"
+                style="margin-left: 10px; padding: 5px 10px; background: #000000; color: #ffffff; cursor: pointer; font-weight: bold;">Update
+                Pie Charts</button>
+
+            <div
+                style="display: grid; grid-template-columns: 1fr 1fr; gap: 20px; align-items: start; margin-top: 20px;">
+                <!-- Row 1: Titles -->
+                <div style="text-align: center;">
+                    <h4 style="margin: 0; color: #e74c3c; text-decoration: underline;">Spending</h4>
+                </div>
+                <div style="text-align: center;">
+                    <h4 style="margin: 0; color: #27ae60; text-decoration: underline;">Income</h4>
+                </div>
+
+                <!-- Row 2: Legends -->
+                <div style="text-align: center; width: 100%;">
+                    <div id="expensesLegend"
+                        style="display: flex; flex-wrap: wrap; justify-content: center; gap: 10px; font-size: 11px; font-weight: bold;">
+                    </div>
+                </div>
+                <div style="text-align: center; width: 100%;">
+                    <div id="incomeLegend"
+                        style="display: flex; flex-wrap: wrap; justify-content: center; gap: 10px; font-size: 11px; font-weight: bold;">
+                    </div>
+                </div>
+
+                <!-- Row 3: Canvases -->
+                <div style="display: flex; justify-content: center; width: 100%;">
+                    <canvas id="pieChartExpenses"></canvas>
+                </div>
+                <div style="display: flex; justify-content: center; width: 100%;">
+                    <canvas id="pieChartIncome"></canvas>
+                </div>
+            </div>
+        </div>
+
+        <div style="margin-bottom: 30px; padding: 15px; background: #ffffff; border: 3px solid #000000;">
+            <div style="display: flex; gap: 40px; flex-wrap: wrap;">
+                <div>
+                    <h3 style="color: #000000; margin-top: 0;">Category Colors</h3>
+                    <div id="categoryColorContainer"></div>
+                </div>
+                <div>
+                    <h3 style="color: #000000; margin-top: 0;">Account Colors</h3>
+                    <p style="font-size: 12px; margin-top: 0;">Select an account to customize its color.</p>
+                    <div id="balanceColorContainer"></div>
+                </div>
+            </div>
+        </div>
+
+        <h3 style="color: #000000;">Transactions</h3>
+        <div id="tableContainer" style="max-height:600px; overflow:auto; border:3px solid #000000; position:relative;">
+            <table style="font-size:12px; width:100%; border-collapse:collapse; text-align: left; background: #ffffff;">
+                <thead style="position:sticky; top:0; background:#ffffff; z-index:1;">
+                    <tr style="border-bottom: 3px solid #000000;">
+                        <th style="padding: 8px; text-align:center;">Isolate</th>
+                        <th style="padding: 8px;">Date</th>
+                        <th style="padding: 8px;">Time</th>
+                        <th style="padding: 8px;">Description</th>
+                        <th style="padding: 8px;">Amount</th>
+                        <th style="padding: 8px; min-width: 140px;">Category</th>
+                        <th style="padding: 8px;">Account</th>
+                        <th style="padding: 8px; width: 25%;">Notes</th>
+                    </tr>
+                </thead>
+                <tbody id="txnTable"></tbody>
+            </table>
+        </div>
+    </div>
+
+    <!-- Custom Modal Overlay -->
+    <div id="customModalOverlay"
+        style="display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.5); z-index: 1000; justify-content: center; align-items: center;">
+        <div
+            style="background: #ffffff; padding: 30px; border: 4px solid #000000; box-shadow: 10px 10px 0px rgba(0,0,0,0.3); max-width: 400px; text-align: center;">
+            <h2 style="margin-top: 0; color: #e74c3c; border-bottom: 2px solid #000000; padding-bottom: 10px;">Warning
+            </h2>
+            <p style="font-weight: bold; font-size: 16px; margin: 20px 0;">Are you sure you want to clear ALL saved
+                settings and files from the server?</p>
+            <p style="font-size: 12px; margin-bottom: 25px;">This action cannot be undone.</p>
+            <div style="display: flex; justify-content: space-around;">
+                <button id="modalCancelBtn"
+                    style="padding: 10px 20px; font-weight: bold; cursor: pointer; border: 2px solid #000000; background: #ecf0f1;">Cancel</button>
+                <button id="modalConfirmBtn"
+                    style="padding: 10px 20px; font-weight: bold; cursor: pointer; border: 2px solid #000000; background: #e74c3c; color: white;">Yes,
+                    Delete Data</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Readme Modal Overlay -->
+    <div id="readmeModalOverlay"
+        style="display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.5); z-index: 1000; justify-content: center; align-items: center;">
+        <div
+            style="background: #ffffff; padding: 20px; border: 4px solid #000000; box-shadow: 10px 10px 0px rgba(0,0,0,0.3); max-width: 700px; width: 90%; text-align: left; max-height: 85vh; display: flex; flex-direction: column;">
+            <div style="display: flex; justify-content: space-between; align-items: center; border-bottom: 3px solid #000000; padding-bottom: 10px; margin-bottom: 15px;">
+                <h2 style="margin: 0; color: #000000;">Full Changelog (From README.md)</h2>
+                <button id="closeReadmeModalBtn" style="padding: 5px 10px; background: #e74c3c; color: #ffffff; cursor: pointer; font-weight: bold; border: 2px solid #000;">Close</button>
+            </div>
+            <div id="readmeContent" style="font-family: 'Comic Sans MS', 'Comic Sans', cursive; font-size: 12px; overflow-y: auto; white-space: pre-wrap; flex: 1;">
+                Loading...
+            </div>
+        </div>
+    </div>
+
+    <!-- Frontend logic that communicates with Python API -->
+    <script src="{{ url_for('static', filename='app.js') }}"></script>
+</body>
+
+</html>

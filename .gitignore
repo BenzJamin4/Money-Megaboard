@@ -16,6 +16,7 @@ megaboard_data.json
 app_data.json
 **/downloads/*.csv
 PayPalProject/*.csv
+Development Tools/Private CSV Fixtures/
 
 # Secrets
 .github_token
