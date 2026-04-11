@@ -10,10 +10,8 @@ Usage (dev mode):
 """
 import os
 import sys
-import shutil
 import threading
 import socket
-from pathlib import Path
 
 # ---------------------------------------------------------------------------
 # Resolve paths relative to THIS file so it works from any working directory
@@ -23,13 +21,6 @@ VERSION_DIR = os.path.dirname(os.path.abspath(__file__))
 # Ensure the version folder is on sys.path so app.py can be imported
 if VERSION_DIR not in sys.path:
     sys.path.insert(0, VERSION_DIR)
-
-
-def cleanup_generated_downloads():
-    """Delete generated download caches across every version folder."""
-    versions_dir = Path(VERSION_DIR).resolve().parent
-    for downloads_dir in versions_dir.glob("v*/static/downloads"):
-        shutil.rmtree(downloads_dir, ignore_errors=True)
 
 
 def find_free_port():
@@ -53,8 +44,6 @@ def main():
     # Import webview BEFORE changing cwd — its base_uri() resolves at import
     import webview
     import time
-
-    cleanup_generated_downloads()
 
     # Set cwd to the version folder so Flask finds templates/ and static/
     os.chdir(VERSION_DIR)
@@ -89,10 +78,16 @@ def main():
         height=900,
         min_size=(900, 600),
     )
+    webview.start()   # blocks until window is closed
+
+    # When the window closes, perform cleanup of sensitive generated files
+    downloads_dir = os.path.join(VERSION_DIR, "static", "downloads")
     try:
-        webview.start()   # blocks until window is closed
-    finally:
-        cleanup_generated_downloads()
+        import glob
+        for f in glob.glob(os.path.join(downloads_dir, "*.csv")):
+            os.remove(f)
+    except Exception:
+        pass
 
     # Exit cleanly
     sys.exit(0)

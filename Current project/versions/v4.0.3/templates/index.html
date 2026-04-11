@@ -76,9 +76,8 @@
             <button id="readmeChangelogBtn" style="font-size: 0.65em; padding: 3px 10px; background: #000; color: #fff; cursor: pointer; font-weight: bold; border: 2px solid #000; margin-left: 10px; vertical-align: middle; font-family: 'Jeepers', 'Scooby Doo', cursive;">CHANGELOG</button>
         </h2>
         <div
-            style="font-family: 'Comic Sans MS', 'Comic Sans', cursive; font-size: 12px; margin-bottom: 25px; margin-top: 15px; white-space: pre-wrap; background: #fff; padding: 15px; border: 2px solid #000; box-shadow: 4px 4px 0px #000;"><strong>v4.0.3 (PayPal Cleaner & Download Cleanup Bug Fixes)</strong>
+            style="font-family: 'Comic Sans MS', 'Comic Sans', cursive; font-size: 12px; margin-bottom: 25px; margin-top: 15px; white-space: pre-wrap; background: #fff; padding: 15px; border: 2px solid #000; box-shadow: 4px 4px 0px #000;"><strong>v4.0.3 (PayPal Cleaner Bug Fixes)</strong>
 Bug Fixes:
-- The standalone launcher and packaged Mac wrapper now clear generated PayPal download caches on startup, restart, and normal quit so old cleaned exports and debug logs do not persist between runs.
 - Reworked the PayPal cleaner so true two-row merchant hold/reversal pairs stay visible, while only clear multi-row PayPal duplicate scaffolding gets stripped out.
 - Express Checkout Payment rows are now treated as externally funded, and matching same-timestamp PayPal funding/auth scaffolding is removed alongside them.
 - Kept balance-aware duplicate cleanup for outbound friend payments and preapproved external funding rows without over-removing standalone PayPal ledger activity.</div>

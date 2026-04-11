@@ -1,8 +1,7 @@
 CHANGELOG:
 
-v4.0.3 (PayPal Cleaner & Download Cleanup Bug Fixes)
+v4.0.3 (PayPal Cleaner Bug Fixes)
 Bug Fixes:
-- The standalone launcher and packaged Mac wrapper now clear generated PayPal download caches on startup, restart, and normal quit so old cleaned exports and debug logs do not persist between runs.
 - Reworked the PayPal cleaner so true two-row merchant hold/reversal pairs stay visible, while only clear multi-row PayPal duplicate scaffolding gets stripped out.
 - Express Checkout Payment rows are now treated as externally funded, and matching same-timestamp PayPal funding/auth scaffolding is removed alongside them.
 - Kept balance-aware duplicate cleanup for outbound friend payments and preapproved external funding rows without over-removing standalone PayPal ledger activity.
