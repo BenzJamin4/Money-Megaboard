@@ -1,5 +1,11 @@
 CHANGELOG:
 
+v4.0.4 (Transfer Rule & Quit Handling Polish)
+Bug Fixes:
+- Added 'Donation Payment' to the PayPal CSV cleaner exclusion logic, allowing the external funding cleanup sweep to omit it from the finalized Master log.
+- Made static/downloads/ CSV files correctly delete on application quit by leveraging pywebview's on_closing event to safely wipe runtime data.
+- Refactored the 'apply_transfer_rules()' auto-linking algorithm to calculate time-proximity across all candidate pairs simultaneously and evaluate greedily, eliminating chronologically premature match stealing and fixing missing transfer alignments.
+
 v4.0.3 (PayPal Cleaner Bug Fixes)
 Bug Fixes:
 - Reworked the PayPal cleaner so true two-row merchant hold/reversal pairs stay visible, while only clear multi-row PayPal duplicate scaffolding gets stripped out.

@@ -35,3 +35,7 @@ dist/
 *.swo
 *~
 git_backup/
+Development Tools/Private CSV's (be careful!)/
+Current project/versions/*/static/downloads/debug_frontend_payload.json
+test_*.py
+scratch_test.py

@@ -40,6 +40,7 @@ When completing a version, strictly follow this procedure to document changes:
 - **0.X.0 (Minor Features)**: The title should generally reflect features added (e.g., `v3.5.0 (Features & Bug Fixes)`). Use `Features:` first and `Bug Fixes:` second when both exist.
 - **0.0.X (Patches)**: The title should reflect polish (e.g., `v3.4.1 (Feature Polish & Bug Fixes)`). Use the same `Features:` then `Bug Fixes:` order when both exist.
 - **Never include empty changelog sections.** If there are no features, omit `Features:` entirely. If there are no bug fixes, omit `Bug Fixes:` entirely.
+- **Privacy Restriction**: Do NOT include any personal data, explicit dates, transaction descriptions, or dollar amounts from the user's debug sessions or CSV files within the release notes. Keep all bug fix descriptions completely generic.
 - **Docs-only exception**: If the user explicitly asks to correct older release notes, changelog text in older version folders may be updated without treating that as version code work.
 
 ## 6. Cross-Platform Compatibility
