@@ -1,5 +1,20 @@
 CHANGELOG:
 
+v4.0.5 (Feature Polish & Bug Fixes)
+Features:
+- Updated the PayPal CSV mapper default label to "PayPal (cleaned)".
+- Sorted the Net Worth chart legend by each account's all-time maximum balance.
+- Net Worth chart lines now start with a $0 anchor point the month before the first transaction.
+- Chart lines continue as a flat line to the present if the account has a non-zero balance; lines that end at $0 terminate cleanly.
+- Clicking any month on the chart scrolls to the nearest transaction section.
+
+Bug Fixes:
+- Added local packaging of Chart.js to ensure the application works entirely offline.
+- Expanded the width of the Time column in the transaction log to prevent AM/PM line wrapping.
+- Implemented chart sequence completion to prevent missing months from skipping gaps on the timeline.
+- Corrected zero-dollar data points to only appear when transactions occurred that month resulting in a $0 balance.
+- Fixed chart tooltip and click snapping to lock to the x-axis month position instead of jumping to nearest data points.
+
 v4.0.4 (Transfer Rule & Quit Handling Polish)
 Bug Fixes:
 - Added 'Donation Payment' to the PayPal CSV cleaner exclusion logic, allowing the external funding cleanup sweep to omit it from the finalized Master log.
