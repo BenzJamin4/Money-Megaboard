@@ -5,7 +5,7 @@ set -x
 
 echo "Running clanker cleanup..."
 
-cd "/Users/ben/Documents/projects/Money Megaboard/Antigravity" || exit 1
+cd "$(dirname "$0")/.." || exit 1
 
 # Find and delete all temporary scratch and test scripts in the versions directory
 find "Current Project/versions" -type f \( -name "test_*.py" -o -name "scratch_*.py" \) -delete
