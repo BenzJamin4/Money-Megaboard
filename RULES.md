@@ -1,59 +1,48 @@
-# Money Megaboard Agent Rules
+# Money Megaboard — Workspace Rules & Workflows
+> [!IMPORTANT]
+> These rules are binding. Read and apply them before writing code or executing commands.
 
-These are the strict rules and workflows that must be followed when working on the Money Megaboard project:
+## 1. Directory Structure & File Scope
+* **Scope:** Access files **exclusively** within the `/Antigravity/` project directory. Never read or write outside this boundary.
+* **Organization:** Place Mac terminal command scripts (`.command`, `.sh`) inside `mac commands/`. Place documentation in the root or a dedicated doc folder. Do not clutter the root.
+* **Search Optimization:** Work **exclusively** inside the active version folder (`Current Project/versions/vX.Y.Z/`). Add older inactive version folders to `.cursorignore` to prevent AI search pollution.
 
-## 1. Project Organization
-- Place Mac terminal command scripts (`.command`) in `mac commands/`.
+## 2. Security, Privacy & Git Workflow
+* **Data Privacy:** Do **NOT** commit personal or financial data (CSVs, logs, JSON databases). Maintain `.gitignore` actively to exclude them.
+* **Git Snapshots:** Commit a snapshot **before** starting work on a version:
+  ```bash
+  git add . && git commit -m "Snapshot before starting vX.Y.Z"
+  ```
+  Commit and push to GitHub **after** completing a version, using the PAT stored in `.github_token`.
+* **Changelog Censor:** Keep all release notes completely generic. Strip actual names, dollar amounts, transaction descriptions, and explicit dates.
 
-- Place documentation in the root directory or in a documentation folder.
-- Do **not** clutter the root directory — only primary config files belong there.
-- The browser subagent is **banned** from testing CSV uploads or chart files. The AI must wait for the user to manually verify those.
+## 3. Architecture & Compatibility
+* **Cross-Platform:** App must support macOS and Windows. Always use `os.path.join()` or `pathlib.Path`; never hardcode `/` or `\` in paths. Avoid OS-specific shell commands, libraries, or file permissions. Alert the user before using platform-specific behavior.
+* **Offline-First:** The app is completely offline-only by default (v6.0.0 introduces optional internet connectivity with explicit toggle controls). Always download remote JS/CSS assets (e.g. `chart.js`) locally to `static/`.
+* **State Persistence:** Store configurations in `app_data.json` using an atomic write strategy (write to `.tmp` and rename using `os.replace`). Never delete settings or database files on read/write errors.
+* **Venv & Dependencies:** Venv lives at `Current Project/shared/venv/`. Do not duplicate it. For `v4.X.X` versions, do **NOT** modify `requirements.txt` in a way that breaks older versions (e.g. do not remove `pandas`). Dependency cleanup is reserved for `v5.0.0`.
+* **Stack:** Python/Flask backend + HTML/CSS/JS frontend displayed in a native window via PyWebView. Restarts/version switching write to `shared/active_version.txt` and `shared/restart_flag` to reload the process under the runner.
 
-## 2. Version Branching
-When incrementing the version (e.g., `v3.4.9` → `v4.0.1`):
-1. **Clone first**: `cp -a <old_version_dir> <new_version_dir>`
-2. **Work exclusively in the new folder** — never modify the source version's files.
+## 4. Versioning & Promotion
+When incrementing versions:
+1. **Clone First:** Copy the active version folder to the new version folder:
+   ```bash
+   cp -a "Current Project/versions/v<old>" "Current Project/versions/v<new>"
+   ```
+2. **Focus:** Work **only** inside the new version folder. Inactive version code should never be modified (except for document/release note corrections).
+3. **Semantic Guide:**
+   * **X.0.0 (Major):** Architectural overhauls or UI redesigns (relocates previous folders to `Old Versions/`).
+   * **0.X.0 (Minor):** New features or optimizations.
+   * **0.0.X (Patch):** Bug fixes and polish of existing features.
 
-**Semantic Versioning Guide:**
-- **X.0.0** (Major) — Major redesigns or architectural overhauls (e.g., 3.x → 4.0.0)
-- **0.X.0** (Minor) — New features or new ideas added
-- **0.0.X** (Patch) — Bug fixes and polishes of features that already exist
+## 5. Changelog & Releases
+When completing a version:
+1. **Format:** Use bullet points only. Group under `Features:` and `Bug Fixes:` (omit empty sections).
+   * **Major (X.0.0):** Title summarizes overhaul (e.g. `v4.0.0 (Standalone Desktop Migration)`).
+   * **Minor (0.X.0):** Title reflects features (e.g. `v3.5.0 (Features & Bug Fixes)`).
+   * **Patch (0.0.X):** Title reflects polish (e.g. `v3.4.1 (Feature Polish & Bug Fixes)`).
+2. **Master History:** Prepend release notes to the top of the root `README.md`.
+3. **UI Display:** Update the inline changelog box in `templates/index.html` (clear out old notes). Once the Smart Changelog Parser is built, the backend will dynamically parse `README.md` on startup instead.
 
-## 3. Git Workflow, Backups & Security
-1. **Snapshot before editing**: `git add . && git commit -m "Snapshot before starting vX.Y.Z"`
-2. **Push to GitHub after every version** — the PAT is stored in `.agents/github_token` and embedded in the `origin` remote URL. **Failure to push is unacceptable.**
-3. **Strict `.gitignore` Maintenance**: You must actively keep `.gitignore` up to date with any folder or file name changes across the project.
-4. **Data Privacy Check**: Before uploading *anything* to GitHub that might contain personal or financial information (like exported CSVs, debug logs, app data, etc.), you MUST add those files/paths to the `.gitignore` or explicitly warn the user and await authorization.
-
-## 4. Virtual Environment
-- Lives at `shared/venv/` — do **NOT** copy or create venv inside version folders.
-- Run via `shared/venv/bin/python <version_dir>/launcher.py` or the top-level server.
-
-## 5. Changelog Updates
-When completing a version, strictly follow this procedure to document changes:
-1. **Write the release notes using bullet points.** Do not use paragraph blobs.
-2. **Update the UI**: Paste the *new* release notes into the inline changelog box within `templates/index.html` of the new version folder. Do not touch or carry over any old version notes here.
-3. **Update the Master History**: Paste the exact same new release notes at the very top of `README.md` in the project root.
-
-**Formatting Rules based on Version Type:**
-- **X.0.0 (Major Updates)**: The title string should safely summarize the major overhaul (e.g., `v4.0.0 (Standalone Desktop Application Migration)`). Followed purely by bullet points detailing the fundamental changes.
-- **0.X.0 (Minor Features)**: The title should generally reflect features added (e.g., `v3.5.0 (Features & Bug Fixes)`). Use `Features:` first and `Bug Fixes:` second when both exist.
-- **0.0.X (Patches)**: The title should reflect polish (e.g., `v3.4.1 (Feature Polish & Bug Fixes)`). Use the same `Features:` then `Bug Fixes:` order when both exist.
-- **Never include empty changelog sections.** If there are no features, omit `Features:` entirely. If there are no bug fixes, omit `Bug Fixes:` entirely.
-- **Privacy Restriction**: Do NOT include any personal data, explicit dates, transaction descriptions, or dollar amounts from the user's debug sessions or CSV files within the release notes. Keep all bug fix descriptions completely generic.
-- **Docs-only exception**: If the user explicitly asks to correct older release notes, changelog text in older version folders may be updated without treating that as version code work.
-
-## 6. Cross-Platform Compatibility
-This app must remain compatible with **both macOS and Windows**.
-- Always use `os.path.join()` or `pathlib.Path` — never hardcode `/` or `\` in paths.
-- Avoid OS-specific shell commands, libraries, or file permissions.
-- **Alert the user before** introducing any platform-specific behavior.
-
-## 7. Architecture (v4.0.0+)
-- **Backend**: Python + Flask (all data logic, CSV processing, financial math).
-- **Frontend**: HTML/CSS/JS served by Flask, displayed in a native window via PyWebView.
-- **Launcher**: Each version contains a `launcher.py` that starts Flask + PyWebView.
-- **Packaging**: PyInstaller creates standalone `.app` (Mac) / `.exe` (Windows) when needed.
-
-## 8. File Access Scope
-The agent must **only** access files within the `/Antigravity/` project directory. Never read from or write to the Desktop, home directory, or any other system paths. Provide all temporary files or debug logs within `/Antigravity/`.
+## 6. Agent Boundaries
+* **Verification:** The browser subagent is **banned** from testing CSV uploads or chart rendering. The agent must wait for the user to manually verify these features.

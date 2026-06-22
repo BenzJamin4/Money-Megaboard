@@ -1,0 +1,16 @@
+{
+  "plugins": {
+    "huggingface-skills": {
+      "enabled": true
+    },
+    "figma": {
+      "enabled": true
+    },
+    "datadog": {
+      "enabled": true
+    },
+    "superpowers": {
+      "enabled": true
+    }
+  }
+}
