@@ -1,5 +1,12 @@
 CHANGELOG:
 
+v4.2.2 (Title)
+Features:
+- 
+
+Bug Fixes:
+-
+
 v4.2.1 (Downloads & Settings Fixes)
 Features:
 - Import Settings JSON: Added a button to import settings JSON backups directly into the application.
