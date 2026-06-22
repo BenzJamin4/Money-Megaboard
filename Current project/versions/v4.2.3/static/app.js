@@ -322,7 +322,15 @@ function setupEventListeners() {
                 });
 
                 if (response.ok) {
-                    location.reload();
+                    appSettings = parsedSettings;
+                    const mapperContainer = document.getElementById("mappingContainer");
+                    const isMapperVisible = mapperContainer && mapperContainer.style.display === "block";
+                    
+                    if (isMapperVisible && Object.keys(pendingGroups).length > 0) {
+                        renderMappingUI();
+                    } else {
+                        location.reload();
+                    }
                 } else {
                     const errData = await response.json().catch(() => ({}));
                     alert("Failed to save imported settings: " + (errData.error || "Unknown error"));

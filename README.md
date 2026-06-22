@@ -1,11 +1,11 @@
 CHANGELOG:
 
-v4.2.3 (Title)
+v4.2.3 (Mapper State Preservation)
 Features:
-- 
+- Settings Import State Preservation: Importing settings JSON while mapping columns no longer reloads the page and clears selected files. Instead, it updates the mapping dropdown selections in place, preserving loaded files.
 
 Bug Fixes:
--
+- Double-checked duplicate download protection: Confirmed that all download pipelines natively use copy-increment renaming (e.g. `Mega_Combined_Ledger (1).csv`) and never overwrite existing files.
 
 v4.2.2 (Save dialogs & Demo mapping)
 Features:
