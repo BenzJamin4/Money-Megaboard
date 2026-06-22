@@ -1,11 +1,20 @@
 CHANGELOG:
 
-v4.3.1 (Title)
+v4.3.2 (Title)
 Features:
 - 
 
 Bug Fixes:
 -
+
+v4.3.1 (Tooltip Sum, Title Rename & Bar Percentage Fixes)
+Features:
+- Tooltip Sum Integration: Relocated the Net Worth visible sum into the custom cursor tooltip as a "Visible Total: $X.XX" footer.
+- Layout Header Rename: Renamed the stacked accounts bar graph header to "Account Bar Graph".
+
+Bug Fixes:
+- Percentage Mode Negatives: Corrected calculation when negative balances exist, scaling all values against the sum of absolute monthly balances so the bar always totals 100% height.
+- Dynamic Percentage Stacking: Overrode the legend onClick callback to recalculate percentage stacks dynamically based only on visible accounts when items are unselected.
 
 v4.3.0 (Stacked Graph & Cosmetics)
 Features:
