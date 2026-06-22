@@ -1,5 +1,12 @@
 CHANGELOG:
 
+v4.2.1 (Title)
+Features:
+- 
+
+Bug Fixes:
+-
+
 v4.2.0 (CSV Mapper & Data States)
 Features:
 - Atomic Data Persistence: Rebuild settings load/save to write to a temporary file and atomically rename using `os.replace` to prevent data corruption.
