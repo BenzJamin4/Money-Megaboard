@@ -816,14 +816,24 @@ def init_data():
         base_dir = os.path.dirname(os.path.abspath(__file__))
         payload_path = os.path.join(base_dir, 'static', 'downloads', 'debug_frontend_payload.json')
         
-        # 1. If debug_frontend_payload.json exists, return it!
+        # If debug_frontend_payload.json exists, return it!
         if os.path.exists(payload_path):
             with open(payload_path, 'r', encoding='utf-8') as f:
                 transactions = json.load(f)
             return jsonify({"transactions": transactions})
             
-        # 2. Otherwise load dummy data
-        dummy_dir = os.path.abspath(os.path.join(base_dir, "..", "..", "..", "Development Tools", "Dummy CSVs"))
+        return jsonify({"transactions": []})
+    except Exception as e:
+        return jsonify({"error": str(e)}), 500
+
+
+@app.route('/api/load-demo-data', methods=['POST'])
+def load_demo_data():
+    try:
+        base_dir = os.path.dirname(os.path.abspath(__file__))
+        payload_path = os.path.join(base_dir, 'static', 'downloads', 'debug_frontend_payload.json')
+        
+        dummy_dir = os.path.abspath(os.path.join(base_dir, "..", "..", "shared", "Demo CSVs"))
         if os.path.exists(dummy_dir):
             mock_transactions = parse_dummy_csvs(dummy_dir)
             
@@ -833,7 +843,126 @@ def init_data():
                 
             return jsonify({"transactions": mock_transactions})
             
-        return jsonify({"transactions": []})
+        return jsonify({"error": f"Demo CSVs directory not found at {dummy_dir}"}), 404
+    except Exception as e:
+        return jsonify({"error": str(e)}), 500
+
+
+@app.route('/api/download-file', methods=['POST'])
+def download_file():
+    import shutil
+    data = request.json
+    file_type = data.get('type') # 'cleaned', 'debug', 'mega_csv', 'settings'
+    filename = data.get('filename')
+    content = data.get('content')
+    
+    # Resolve Downloads directory
+    downloads_dir = os.path.join(os.path.expanduser("~"), "Downloads")
+    if not os.path.exists(downloads_dir):
+        downloads_dir = os.path.join(os.path.expanduser("~"), "Desktop")
+        
+    base_dir = os.path.dirname(os.path.abspath(__file__))
+    
+    try:
+        if content is not None:
+            if not filename:
+                return jsonify({"error": "Filename is required for custom content download"}), 400
+            dest_path = os.path.join(downloads_dir, filename)
+            with open(dest_path, 'w', encoding='utf-8') as f:
+                f.write(content)
+            return jsonify({"status": "success", "path": dest_path})
+            
+        if file_type == 'cleaned':
+            src_path = os.path.join(base_dir, "static", "downloads", "PayPal_Master_History.csv")
+            dest_filename = "PayPal_Master_History_Cleaned.csv"
+        elif file_type == 'debug':
+            src_path = os.path.join(base_dir, "static", "downloads", "PayPal_DEBUG_LOG.csv")
+            dest_filename = "PayPal_DEBUG_LOG.csv"
+        elif file_type == 'mega_csv':
+            src_path = None
+            dest_filename = "Mega_Combined_Ledger.csv"
+        elif file_type == 'settings':
+            src_path = None
+            dest_filename = "megaboard_settings_backup.json"
+        else:
+            return jsonify({"error": "Unknown file type"}), 400
+            
+        dest_path = os.path.join(downloads_dir, dest_filename)
+        
+        if file_type == 'mega_csv':
+            payload_path = os.path.join(base_dir, 'static', 'downloads', 'debug_frontend_payload.json')
+            if not os.path.exists(payload_path):
+                return jsonify({"error": "No transaction data loaded to export."}), 400
+            with open(payload_path, 'r', encoding='utf-8') as f:
+                transactions = json.load(f)
+            
+            sorted_txs = sorted(transactions, key=lambda x: x['date'])
+            
+            rows = []
+            rows.append(["Date", "Description", "Amount", "Account", "Category", "Notes", "Is Transfer", "Is Ghost"])
+            addedGhostTxIds = set()
+            
+            for tx in sorted_txs:
+                try:
+                    dt = datetime.fromisoformat(tx['date'])
+                    date_str = dt.strftime("%m/%d/%Y")
+                except Exception:
+                    date_str = str(tx['date']).split('T')[0]
+                    
+                rows.append([
+                    date_str,
+                    tx['desc'],
+                    f"{tx['amount']:.2f}",
+                    tx['account'],
+                    tx['category'],
+                    tx.get('notes', ''),
+                    "TRUE" if tx.get('isTransfer') else "FALSE",
+                    "FALSE"
+                ])
+                
+                if tx.get('isTransfer') and tx.get('transferPartnerAccount') and not tx.get('transferPartnerTxId') and tx['id'] not in addedGhostTxIds:
+                    ghost_amt = -tx['amount']
+                    rows.append([
+                        date_str,
+                        f"Transfer with {tx['account']}",
+                        f"{ghost_amt:.2f}",
+                        tx['transferPartnerAccount'],
+                        "Transfers",
+                        tx.get('notes', ''),
+                        "TRUE",
+                        "TRUE"
+                    ])
+                    addedGhostTxIds.add(tx['id'])
+                    
+                if tx.get('isolate') and tx.get('category') == 'Transfers' and tx.get('manualTransferAccount') and tx['id'] not in addedGhostTxIds:
+                    ghost_amt = -tx['amount']
+                    rows.append([
+                        date_str,
+                        f"Transfer with {tx['account']}",
+                        f"{ghost_amt:.2f}",
+                        tx['manualTransferAccount'],
+                        "Transfers",
+                        tx.get('notes', ''),
+                        "TRUE",
+                        "TRUE"
+                    ])
+                    addedGhostTxIds.add(tx['id'])
+            
+            with open(dest_path, 'w', newline='', encoding='utf-8') as f:
+                writer = csv.writer(f)
+                writer.writerows(rows)
+                
+        elif file_type == 'settings':
+            settings_data = load_data()
+            with open(dest_path, 'w', encoding='utf-8') as f:
+                json.dump(settings_data, f, indent=4)
+                
+        else:
+            if not os.path.exists(src_path):
+                return jsonify({"error": f"Source file does not exist: {os.path.basename(src_path)}"}), 404
+            shutil.copy2(src_path, dest_path)
+            
+        return jsonify({"status": "success", "path": dest_path})
     except Exception as e:
         return jsonify({"error": str(e)}), 500
 

@@ -91,6 +91,8 @@
                             mapped
                             together.</span><br><br>
                         <input type="file" id="csvFiles" accept=".csv" multiple style="padding: 5px;" />
+                        <button id="useDemoCsvsBtn"
+                            style="padding: 5px 10px; background: #3498db; color: #ffffff; cursor: pointer; font-weight: bold; border: 2px solid #000; margin-left: 10px;">Use Demo CSVs</button>
                         <br><br>
                     </div>
 
@@ -98,12 +100,11 @@
                         style="display: none; padding: 10px; background: #e8f4f8; border: 1px solid #2980b9;">
                         <strong>PayPal CSV Detected and Cleaned!</strong><br>
                         <div style="margin-top: 5px;">
-                            <a href="{{ url_for('static', filename='downloads/PayPal_Master_History.csv') }}" download
-                                style="font-size: 13px; color: #2980b9; font-weight: bold; margin-right: 15px;">📥
-                                Download
-                                Cleaned</a>
-                            <a href="{{ url_for('static', filename='downloads/PayPal_DEBUG_LOG.csv') }}" download
-                                style="font-size: 13px; color: #8e44ad; font-weight: bold;">📥 Download Debug</a>
+                            <button id="downloadCleanedBtn"
+                                style="background: none; border: none; padding: 0; font-size: 13px; color: #2980b9; font-weight: bold; margin-right: 15px; cursor: pointer; text-decoration: underline;">📥
+                                Download Cleaned</button>
+                            <button id="downloadDebugBtn"
+                                style="background: none; border: none; padding: 0; font-size: 13px; color: #8e44ad; font-weight: bold; cursor: pointer; text-decoration: underline;">📥 Download Debug</button>
                         </div>
                     </div>
 
@@ -116,12 +117,12 @@
                     <button id="exportSettingsBtn"
                         style="padding: 10px 10px; background: #8e44ad; color: #ffffff; cursor: pointer; font-weight: bold; height: fit-content; border: 2px solid #000; text-shadow: 1px 1px 1px #000; margin-left: 10px;">Export
                         Settings JSON</button>
+                    <button id="importSettingsBtn"
+                        style="padding: 10px 10px; background: #9b59b6; color: #ffffff; cursor: pointer; font-weight: bold; height: fit-content; border: 2px solid #000; text-shadow: 1px 1px 1px #000; margin-left: 10px;">Import
+                        Settings JSON</button>
+                    <input type="file" id="settingsFileInput" accept=".json" style="display: none;" />
                 </div>
                 <div>
-                    <button id="clearStorageBtn"
-                        style="padding: 8px 12px; background: #e74c3c; color: #ffffff; cursor: pointer; font-weight: bold;">
-                        Clear Saved Data
-                    </button>
                     <span id="saveStatus"
                         style="font-size:12px; font-weight:bold; margin-left:10px; color:#27ae60;"></span>
                 </div>

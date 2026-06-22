@@ -37,6 +37,27 @@ window.onload = async () => {
     await loadInitialData();
 };
 
+async function downloadFileViaBackend(filename, content, type = null) {
+    try {
+        const response = await fetch('/api/download-file', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json'
+            },
+            body: JSON.stringify({ filename, content, type })
+        });
+        const result = await response.json();
+        if (response.ok && result.status === 'success') {
+            alert(`File successfully saved to:\n${result.path}`);
+        } else {
+            alert(`Failed to save file: ${result.error || 'Unknown error'}`);
+        }
+    } catch (e) {
+        console.error(e);
+        alert(`Error communicating with backend to save file: ${e.message}`);
+    }
+}
+
 async function downloadGhostCSV() {
     const ghostRows = [];
     ghostRows.push(["Date", "Description", "Amount", "Account", "Interacting Account"]);
@@ -69,14 +90,7 @@ async function downloadGhostCSV() {
     }
 
     let csvContent = ghostRows.map(e => e.map(cell => `"${String(cell).replace(/"/g, '""')}"`).join(",")).join("\n");
-    const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
-    const url = URL.createObjectURL(blob);
-    const link = document.createElement("a");
-    link.setAttribute("href", url);
-    link.setAttribute("download", "Ghost_Accounts_Dummy.csv");
-    document.body.appendChild(link);
-    link.click();
-    document.body.removeChild(link);
+    await downloadFileViaBackend("Ghost_Accounts_Dummy.csv", csvContent);
 }
 
 async function loadSettingsFromServer() {
@@ -210,9 +224,111 @@ function setupEventListeners() {
         }
     });
 
-    document.getElementById("clearStorageBtn").addEventListener("click", async (e) => {
+    // PayPal download buttons
+    document.getElementById("downloadCleanedBtn").addEventListener("click", (e) => {
         e.preventDefault();
-        document.getElementById("customModalOverlay").style.display = "flex";
+        downloadFileViaBackend("PayPal_Master_History_Cleaned.csv", null, "cleaned");
+    });
+
+    document.getElementById("downloadDebugBtn").addEventListener("click", (e) => {
+        e.preventDefault();
+        downloadFileViaBackend("PayPal_DEBUG_LOG.csv", null, "debug");
+    });
+
+    // Use Demo CSVs button
+    document.getElementById("useDemoCsvsBtn").addEventListener("click", async (e) => {
+        e.preventDefault();
+        const btn = e.target;
+        const oldText = btn.innerText;
+        btn.innerText = "Loading Demo...";
+        btn.disabled = true;
+        
+        try {
+            const res = await fetch('/api/load-demo-data', { method: 'POST' });
+            if (!res.ok) {
+                const errData = await res.json().catch(() => ({}));
+                alert("Failed to load demo data: " + (errData.error || "Unknown error"));
+                return;
+            }
+            const data = await res.json();
+            if (data.transactions) {
+                allTransactions = data.transactions.map(t => {
+                    t.date = new Date(t.date);
+                    return t;
+                });
+                
+                if (allTransactions.length) {
+                    document.getElementById("startDate").value = allTransactions[allTransactions.length - 1].date.toISOString().split('T')[0];
+                    document.getElementById("endDate").value = allTransactions[0].date.toISOString().split('T')[0];
+                }
+                
+                // Hide column mapper UI since demo data is pre-mapped
+                document.getElementById("mappingContainer").style.display = "none";
+                
+                // Auto show/hide paypal downloads
+                const hasPayPal = allTransactions.some(t => t.account && t.account.toLowerCase().includes("paypal"));
+                document.getElementById("paypalDownloads").style.display = hasPayPal ? "block" : "none";
+                
+                renderTable();
+                updateCharts();
+                renderTransferRules();
+                alert("Demo CSVs loaded successfully!");
+            }
+        } catch (err) {
+            console.error("Error loading demo data:", err);
+            alert("Error loading demo data: " + err.message);
+        } finally {
+            btn.innerText = oldText;
+            btn.disabled = false;
+        }
+    });
+
+    // Import Settings buttons
+    document.getElementById("importSettingsBtn").addEventListener("click", (e) => {
+        e.preventDefault();
+        document.getElementById("settingsFileInput").click();
+    });
+
+    document.getElementById("settingsFileInput").addEventListener("change", async (e) => {
+        const file = e.target.files[0];
+        if (!file) return;
+
+        const reader = new FileReader();
+        reader.onload = async (event) => {
+            try {
+                const parsedSettings = JSON.parse(event.target.result);
+                if (typeof parsedSettings !== 'object' || parsedSettings === null) {
+                    throw new Error("Settings file must be a JSON object");
+                }
+                
+                const expectedKeys = ["customCategories", "isolatedTxs", "csvMappings", "customNotes", "transferRules"];
+                const hasValidKey = expectedKeys.some(key => key in parsedSettings);
+                
+                if (!hasValidKey) {
+                    if (!confirm("This JSON file doesn't look like a Money Megaboard settings file. Import anyway?")) {
+                        return;
+                    }
+                }
+
+                const response = await fetch('/api/settings', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify(parsedSettings)
+                });
+
+                if (response.ok) {
+                    alert("Settings imported successfully! The application will now reload.");
+                    location.reload();
+                } else {
+                    const errData = await response.json().catch(() => ({}));
+                    alert("Failed to save imported settings: " + (errData.error || "Unknown error"));
+                }
+            } catch (err) {
+                alert("Error reading or parsing settings JSON: " + err.message);
+            }
+        };
+        reader.readAsText(file);
+        e.target.value = "";
     });
 
     document.getElementById("modalCancelBtn").addEventListener("click", () => {
@@ -1502,6 +1618,8 @@ async function loadInitialData() {
                 document.getElementById("endDate").value = allTransactions[0].date.toISOString().split('T')[0];
             }
             
+            const hasPayPal = allTransactions.some(t => t.account && t.account.toLowerCase().includes("paypal"));
+            document.getElementById("paypalDownloads").style.display = hasPayPal ? "block" : "none";
             renderTable();
             updateCharts();
         }
@@ -1566,24 +1684,10 @@ async function downloadMegaCSV() {
     });
     
     let csvContent = rows.map(e => e.map(cell => `"${String(cell).replace(/"/g, '""')}"`).join(",")).join("\n");
-    const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
-    const url = URL.createObjectURL(blob);
-    const link = document.createElement("a");
-    link.setAttribute("href", url);
-    link.setAttribute("download", "Mega_Combined_Ledger.csv");
-    document.body.appendChild(link);
-    link.click();
-    document.body.removeChild(link);
+    await downloadFileViaBackend("Mega_Combined_Ledger.csv", csvContent);
 }
 
 function exportSettingsJSON() {
     const settingsContent = JSON.stringify(appSettings, null, 4);
-    const blob = new Blob([settingsContent], { type: 'application/json;charset=utf-8;' });
-    const url = URL.createObjectURL(blob);
-    const link = document.createElement("a");
-    link.setAttribute("href", url);
-    link.setAttribute("download", "megaboard_settings_backup.json");
-    document.body.appendChild(link);
-    link.click();
-    document.body.removeChild(link);
+    downloadFileViaBackend("megaboard_settings_backup.json", settingsContent);
 }

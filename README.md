@@ -1,11 +1,14 @@
 CHANGELOG:
 
-v4.2.1 (Title)
+v4.2.1 (Downloads & Settings Fixes)
 Features:
-- 
+- Import Settings JSON: Added a button to import settings JSON backups directly into the application.
+- Use Demo CSVs: Added a manual button next to file upload to load pre-mapped transactions from the `Current Project/shared/Demo CSVs/` directory.
+- Dynamic PayPal Downloads Display: Automatically detects if PayPal transactions exist and shows/hides the PayPal downloads section accordingly.
 
 Bug Fixes:
--
+- Prevent PyWebView window replacement on downloads: Rerouted all file downloads (Cleaned/Debug PayPal CSVs, Mega CSV, Ghost CSV, Settings JSON) through the Python backend to save natively to the user's `Downloads` folder, eliminating window hijackings.
+- Consolidated RESET buttons: Removed the duplicate "Clear Saved Data" body button, keeping only the header "RESET" button which performs the exact same warning and storage/cache wipe operation.
 
 v4.2.0 (CSV Mapper & Data States)
 Features:
