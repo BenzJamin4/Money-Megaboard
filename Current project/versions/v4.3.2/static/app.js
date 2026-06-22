@@ -1573,6 +1573,13 @@ function updateCharts() {
                                 label += new Intl.NumberFormat('en-US', { style: 'currency', currency: 'USD' }).format(context.parsed.y);
                             }
                             return label;
+                        },
+                        footer: function (tooltipItems) {
+                            let sum = 0;
+                            tooltipItems.forEach(item => {
+                                sum += item.parsed.y;
+                            });
+                            return 'Visible Total: ' + new Intl.NumberFormat('en-US', { style: 'currency', currency: 'USD' }).format(sum);
                         }
                     }
                 }
@@ -1652,6 +1659,14 @@ function updateCharts() {
                                     }
                                 }
                                 return label;
+                            },
+                            footer: function (tooltipItems) {
+                                let sum = 0;
+                                tooltipItems.forEach(item => {
+                                    const originalVal = item.dataset.originalData[item.dataIndex] || 0;
+                                    sum += originalVal;
+                                });
+                                return 'Visible Total: ' + new Intl.NumberFormat('en-US', { style: 'currency', currency: 'USD' }).format(sum);
                             }
                         }
                     }
