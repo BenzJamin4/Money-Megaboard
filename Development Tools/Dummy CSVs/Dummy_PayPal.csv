@@ -1,0 +1,58 @@
+Date,Time,TimeZone,Name,Type,Status,Currency,Gross,Fee,Net,Transaction ID
+01/02/2026,18:30:00,EST,Steam Games,Express Checkout Payment,Completed,USD,-39.7,0.00,-39.7,TXN_MERCH_20260102_501
+01/05/2026,10:00:00,EST,,Bank Deposit to PP Account,Completed,USD,200.00,0.00,200.00,TXN_FUND_20260105
+01/11/2026,18:30:00,EST,eBay,Express Checkout Payment,Completed,USD,-58.17,0.00,-58.17,TXN_MERCH_20260111_127
+01/12/2026,12:00:00,EST,Hulu,Express Checkout Payment,Completed,USD,-12.99,0.00,-12.99,TXN_SUB_20260112
+01/13/2026,18:30:00,EST,eBay,Express Checkout Payment,Completed,USD,-40.24,0.00,-40.24,TXN_MERCH_20260113_955
+01/16/2026,18:30:00,EST,Steam Games,Express Checkout Payment,Completed,USD,-12.5,0.00,-12.5,TXN_MERCH_20260116_466
+01/18/2026,18:30:00,EST,Steam Games,Express Checkout Payment,Completed,USD,-23.47,0.00,-23.47,TXN_MERCH_20260118_448
+01/20/2026,18:30:00,EST,Steam Games,Express Checkout Payment,Completed,USD,-41.25,0.00,-41.25,TXN_MERCH_20260120_885
+01/23/2026,18:30:00,EST,Steam Games,Express Checkout Payment,Completed,USD,-47.14,0.00,-47.14,TXN_MERCH_20260123_632
+01/24/2026,18:30:00,EST,Steam Games,Express Checkout Payment,Completed,USD,-16.09,0.00,-16.09,TXN_MERCH_20260124_659
+01/25/2026,18:30:00,EST,eBay,Express Checkout Payment,Completed,USD,-61.52,0.00,-61.52,TXN_MERCH_20260125_512
+01/27/2026,18:30:00,EST,eBay,Express Checkout Payment,Completed,USD,-71.37,0.00,-71.37,TXN_MERCH_20260127_924
+02/04/2026,18:30:00,EST,Steam Games,Express Checkout Payment,Completed,USD,-42.81,0.00,-42.81,TXN_MERCH_20260204_844
+02/05/2026,10:00:00,EST,,Bank Deposit to PP Account,Completed,USD,200.00,0.00,200.00,TXN_FUND_20260205
+02/05/2026,18:30:00,EST,Steam Games,Express Checkout Payment,Completed,USD,-43.13,0.00,-43.13,TXN_MERCH_20260205_492
+02/09/2026,18:30:00,EST,Steam Games,Express Checkout Payment,Completed,USD,-57.95,0.00,-57.95,TXN_MERCH_20260209_394
+02/12/2026,12:00:00,EST,Hulu,Express Checkout Payment,Completed,USD,-12.99,0.00,-12.99,TXN_SUB_20260212
+02/12/2026,18:30:00,EST,eBay,Express Checkout Payment,Completed,USD,-63.27,0.00,-63.27,TXN_MERCH_20260212_209
+02/18/2026,18:30:00,EST,Steam Games,Express Checkout Payment,Completed,USD,-38.65,0.00,-38.65,TXN_MERCH_20260218_224
+02/19/2026,18:30:00,EST,Steam Games,Express Checkout Payment,Completed,USD,-47.15,0.00,-47.15,TXN_MERCH_20260219_198
+02/20/2026,18:30:00,EST,Steam Games,Express Checkout Payment,Completed,USD,-33.77,0.00,-33.77,TXN_MERCH_20260220_874
+02/25/2026,18:30:00,EST,eBay,Express Checkout Payment,Completed,USD,-55.85,0.00,-55.85,TXN_MERCH_20260225_987
+02/26/2026,18:30:00,EST,eBay,Express Checkout Payment,Completed,USD,-29.94,0.00,-29.94,TXN_MERCH_20260226_793
+03/04/2026,18:30:00,EST,Steam Games,Express Checkout Payment,Completed,USD,-41.16,0.00,-41.16,TXN_MERCH_20260304_969
+03/05/2026,10:00:00,EST,,Bank Deposit to PP Account,Completed,USD,200.00,0.00,200.00,TXN_FUND_20260305
+03/09/2026,18:30:00,EST,eBay,Express Checkout Payment,Completed,USD,-49.87,0.00,-49.87,TXN_MERCH_20260309_240
+03/12/2026,12:00:00,EST,Hulu,Express Checkout Payment,Completed,USD,-12.99,0.00,-12.99,TXN_SUB_20260312
+03/13/2026,18:30:00,EST,Steam Games,Express Checkout Payment,Completed,USD,-32.3,0.00,-32.3,TXN_MERCH_20260313_504
+03/14/2026,18:30:00,EST,eBay,Express Checkout Payment,Completed,USD,-49.62,0.00,-49.62,TXN_MERCH_20260314_211
+03/16/2026,18:30:00,EST,eBay,Express Checkout Payment,Completed,USD,-66.51,0.00,-66.51,TXN_MERCH_20260316_165
+03/19/2026,18:30:00,EST,Steam Games,Express Checkout Payment,Completed,USD,-37.54,0.00,-37.54,TXN_MERCH_20260319_383
+03/22/2026,18:30:00,EST,Steam Games,Express Checkout Payment,Completed,USD,-34.66,0.00,-34.66,TXN_MERCH_20260322_845
+03/24/2026,18:30:00,EST,eBay,Express Checkout Payment,Completed,USD,-39.19,0.00,-39.19,TXN_MERCH_20260324_679
+03/27/2026,18:30:00,EST,eBay,Express Checkout Payment,Completed,USD,-74.42,0.00,-74.42,TXN_MERCH_20260327_279
+03/28/2026,18:30:00,EST,eBay,Express Checkout Payment,Completed,USD,-27.52,0.00,-27.52,TXN_MERCH_20260328_271
+03/29/2026,18:30:00,EST,Steam Games,Express Checkout Payment,Completed,USD,-25.41,0.00,-25.41,TXN_MERCH_20260329_913
+04/02/2026,18:30:00,EST,eBay,Express Checkout Payment,Completed,USD,-23.53,0.00,-23.53,TXN_MERCH_20260402_707
+04/03/2026,18:30:00,EST,eBay,Express Checkout Payment,Completed,USD,-58.18,0.00,-58.18,TXN_MERCH_20260403_847
+04/04/2026,18:30:00,EST,Steam Games,Express Checkout Payment,Completed,USD,-55.13,0.00,-55.13,TXN_MERCH_20260404_512
+04/05/2026,10:00:00,EST,,Bank Deposit to PP Account,Completed,USD,200.00,0.00,200.00,TXN_FUND_20260405
+04/11/2026,18:30:00,EST,Steam Games,Express Checkout Payment,Completed,USD,-32.04,0.00,-32.04,TXN_MERCH_20260411_205
+04/12/2026,12:00:00,EST,Hulu,Express Checkout Payment,Completed,USD,-12.99,0.00,-12.99,TXN_SUB_20260412
+04/18/2026,18:30:00,EST,eBay,Express Checkout Payment,Completed,USD,-19.06,0.00,-19.06,TXN_MERCH_20260418_478
+04/21/2026,18:30:00,EST,eBay,Express Checkout Payment,Completed,USD,-20.39,0.00,-20.39,TXN_MERCH_20260421_845
+04/22/2026,18:30:00,EST,Steam Games,Express Checkout Payment,Completed,USD,-38.52,0.00,-38.52,TXN_MERCH_20260422_677
+04/24/2026,18:30:00,EST,eBay,Express Checkout Payment,Completed,USD,-68.1,0.00,-68.1,TXN_MERCH_20260424_447
+04/26/2026,18:30:00,EST,Steam Games,Express Checkout Payment,Completed,USD,-7.12,0.00,-7.12,TXN_MERCH_20260426_154
+04/28/2026,18:30:00,EST,Steam Games,Express Checkout Payment,Completed,USD,-19.36,0.00,-19.36,TXN_MERCH_20260428_149
+04/30/2026,18:30:00,EST,Steam Games,Express Checkout Payment,Completed,USD,-53.86,0.00,-53.86,TXN_MERCH_20260430_402
+05/02/2026,18:30:00,EST,eBay,Express Checkout Payment,Completed,USD,-26.49,0.00,-26.49,TXN_MERCH_20260502_933
+05/05/2026,10:00:00,EST,,Bank Deposit to PP Account,Completed,USD,200.00,0.00,200.00,TXN_FUND_20260505
+05/08/2026,18:30:00,EST,eBay,Express Checkout Payment,Completed,USD,-57.35,0.00,-57.35,TXN_MERCH_20260508_230
+05/10/2026,18:30:00,EST,eBay,Express Checkout Payment,Completed,USD,-24.95,0.00,-24.95,TXN_MERCH_20260510_338
+05/12/2026,12:00:00,EST,Hulu,Express Checkout Payment,Completed,USD,-12.99,0.00,-12.99,TXN_SUB_20260512
+05/24/2026,18:30:00,EST,Steam Games,Express Checkout Payment,Completed,USD,-39.42,0.00,-39.42,TXN_MERCH_20260524_639
+05/25/2026,18:30:00,EST,eBay,Express Checkout Payment,Completed,USD,-46.73,0.00,-46.73,TXN_MERCH_20260525_986
+05/29/2026,18:30:00,EST,eBay,Express Checkout Payment,Completed,USD,-71.43,0.00,-71.43,TXN_MERCH_20260529_794

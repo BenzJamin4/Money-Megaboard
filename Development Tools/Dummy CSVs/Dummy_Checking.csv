@@ -1,0 +1,123 @@
+Account,Date,Description,Amount,Debit,Credit,Notes
+XXXXXX1111,01/01/2026,Salary Payroll,2500.0,,2500.0,Direct Deposit
+XXXXXX1111,01/03/2026,Wegmans,-120.0,120.0,,Weekly Groceries
+XXXXXX1111,01/05/2026,Transfer to Savings,-500.0,500.0,,Savings account funding
+XXXXXX1111,01/05/2026,CC Payment,-800.0,800.0,,Credit card bill
+XXXXXX1111,01/05/2026,PayPal Funding Transfer,-200.0,200.0,,Funding PayPal balance
+XXXXXX1111,01/06/2026,Wawa Gas,-28.62,28.62,,Wawa visit
+XXXXXX1111,01/08/2026,Wawa Store,-8.09,8.09,,Wawa visit
+XXXXXX1111,01/10/2026,Giant Food,-85.0,85.0,,Weekly Groceries
+XXXXXX1111,01/11/2026,Starbucks,-7.5,7.5,,Dining Out
+XXXXXX1111,01/14/2026,Pizza Hut,-25.0,25.0,,Dining Out
+XXXXXX1111,01/15/2026,Salary Payroll,2500.0,,2500.0,Direct Deposit
+XXXXXX1111,01/17/2026,Aldi,-65.0,65.0,,Weekly Groceries
+XXXXXX1111,01/18/2026,McDonald's,-12.5,12.5,,Dining Out
+XXXXXX1111,01/19/2026,Wawa Store,-19.46,19.46,,Wawa visit
+XXXXXX1111,01/20/2026,Wawa Store,-8.03,8.03,,Wawa visit
+XXXXXX1111,01/20/2026,Pizza Hut,-25.0,25.0,,Dining Out
+XXXXXX1111,01/21/2026,Wawa Gas,-29.54,29.54,,Wawa visit
+XXXXXX1111,01/22/2026,Wawa Store,-19.67,19.67,,Wawa visit
+XXXXXX1111,01/22/2026,Starbucks,-7.5,7.5,,Dining Out
+XXXXXX1111,01/24/2026,Giant Food,-85.0,85.0,,Weekly Groceries
+XXXXXX1111,01/28/2026,Wawa Store,-5.48,5.48,,Wawa visit
+XXXXXX1111,01/29/2026,Wawa Gas,-30.49,30.49,,Wawa visit
+XXXXXX1111,01/31/2026,Wegmans,-120.0,120.0,,Weekly Groceries
+XXXXXX1111,01/31/2026,Wawa Gas,-26.08,26.08,,Wawa visit
+XXXXXX1111,01/31/2026,Starbucks,-7.5,7.5,,Dining Out
+XXXXXX1111,02/01/2026,Salary Payroll,2500.0,,2500.0,Direct Deposit
+XXXXXX1111,02/01/2026,McDonald's,-12.5,12.5,,Dining Out
+XXXXXX1111,02/05/2026,Transfer to Savings,-500.0,500.0,,Savings account funding
+XXXXXX1111,02/05/2026,CC Payment,-800.0,800.0,,Credit card bill
+XXXXXX1111,02/05/2026,PayPal Funding Transfer,-200.0,200.0,,Funding PayPal balance
+XXXXXX1111,02/05/2026,Starbucks,-7.5,7.5,,Dining Out
+XXXXXX1111,02/06/2026,Wawa Store,-16.13,16.13,,Wawa visit
+XXXXXX1111,02/07/2026,Giant Food,-85.0,85.0,,Weekly Groceries
+XXXXXX1111,02/07/2026,Wawa Store,-9.05,9.05,,Wawa visit
+XXXXXX1111,02/10/2026,Wawa Gas,-26.42,26.42,,Wawa visit
+XXXXXX1111,02/10/2026,Starbucks,-7.5,7.5,,Dining Out
+XXXXXX1111,02/11/2026,Starbucks,-7.5,7.5,,Dining Out
+XXXXXX1111,02/12/2026,Wawa Store,-8.28,8.28,,Wawa visit
+XXXXXX1111,02/13/2026,Wawa Gas,-33.62,33.62,,Wawa visit
+XXXXXX1111,02/14/2026,Giant Food,-85.0,85.0,,Weekly Groceries
+XXXXXX1111,02/15/2026,Salary Payroll,2500.0,,2500.0,Direct Deposit
+XXXXXX1111,02/15/2026,Wawa Store,-7.42,7.42,,Wawa visit
+XXXXXX1111,02/18/2026,Wawa Store,-8.32,8.32,,Wawa visit
+XXXXXX1111,02/19/2026,Wawa Gas,-28.62,28.62,,Wawa visit
+XXXXXX1111,02/21/2026,Wegmans,-120.0,120.0,,Weekly Groceries
+XXXXXX1111,02/23/2026,Wawa Store,-18.36,18.36,,Wawa visit
+XXXXXX1111,02/25/2026,Wawa Gas,-21.0,21.0,,Wawa visit
+XXXXXX1111,02/26/2026,Starbucks,-7.5,7.5,,Dining Out
+XXXXXX1111,02/28/2026,Giant Food,-85.0,85.0,,Weekly Groceries
+XXXXXX1111,03/01/2026,Salary Payroll,2500.0,,2500.0,Direct Deposit
+XXXXXX1111,03/01/2026,Wawa Store,-7.18,7.18,,Wawa visit
+XXXXXX1111,03/02/2026,Wawa Store,-18.0,18.0,,Wawa visit
+XXXXXX1111,03/02/2026,Starbucks,-7.5,7.5,,Dining Out
+XXXXXX1111,03/03/2026,McDonald's,-12.5,12.5,,Dining Out
+XXXXXX1111,03/05/2026,Transfer to Savings,-500.0,500.0,,Savings account funding
+XXXXXX1111,03/05/2026,CC Payment,-800.0,800.0,,Credit card bill
+XXXXXX1111,03/05/2026,PayPal Funding Transfer,-200.0,200.0,,Funding PayPal balance
+XXXXXX1111,03/05/2026,Applebee's,-45.0,45.0,,Dining Out
+XXXXXX1111,03/07/2026,Wegmans,-120.0,120.0,,Weekly Groceries
+XXXXXX1111,03/09/2026,Pizza Hut,-25.0,25.0,,Dining Out
+XXXXXX1111,03/10/2026,Wawa Store,-7.89,7.89,,Wawa visit
+XXXXXX1111,03/10/2026,McDonald's,-12.5,12.5,,Dining Out
+XXXXXX1111,03/12/2026,Wawa Gas,-22.49,22.49,,Wawa visit
+XXXXXX1111,03/14/2026,Aldi,-65.0,65.0,,Weekly Groceries
+XXXXXX1111,03/15/2026,Salary Payroll,2500.0,,2500.0,Direct Deposit
+XXXXXX1111,03/15/2026,Wawa Store,-10.51,10.51,,Wawa visit
+XXXXXX1111,03/16/2026,McDonald's,-12.5,12.5,,Dining Out
+XXXXXX1111,03/17/2026,Starbucks,-7.5,7.5,,Dining Out
+XXXXXX1111,03/20/2026,Wawa Store,-15.92,15.92,,Wawa visit
+XXXXXX1111,03/21/2026,Wegmans,-120.0,120.0,,Weekly Groceries
+XXXXXX1111,03/25/2026,Wawa Gas,-23.59,23.59,,Wawa visit
+XXXXXX1111,03/28/2026,Aldi,-65.0,65.0,,Weekly Groceries
+XXXXXX1111,03/28/2026,Wawa Store,-16.35,16.35,,Wawa visit
+XXXXXX1111,03/30/2026,Wawa Gas,-30.85,30.85,,Wawa visit
+XXXXXX1111,03/30/2026,McDonald's,-12.5,12.5,,Dining Out
+XXXXXX1111,04/01/2026,Salary Payroll,2500.0,,2500.0,Direct Deposit
+XXXXXX1111,04/03/2026,Wawa Gas,-22.16,22.16,,Wawa visit
+XXXXXX1111,04/04/2026,Wegmans,-120.0,120.0,,Weekly Groceries
+XXXXXX1111,04/05/2026,Transfer to Savings,-500.0,500.0,,Savings account funding
+XXXXXX1111,04/05/2026,CC Payment,-800.0,800.0,,Credit card bill
+XXXXXX1111,04/05/2026,PayPal Funding Transfer,-200.0,200.0,,Funding PayPal balance
+XXXXXX1111,04/05/2026,Wawa Store,-15.45,15.45,,Wawa visit
+XXXXXX1111,04/06/2026,Wawa Gas,-20.86,20.86,,Wawa visit
+XXXXXX1111,04/07/2026,Wawa Gas,-29.01,29.01,,Wawa visit
+XXXXXX1111,04/09/2026,Pizza Hut,-25.0,25.0,,Dining Out
+XXXXXX1111,04/11/2026,Giant Food,-85.0,85.0,,Weekly Groceries
+XXXXXX1111,04/14/2026,Wawa Store,-7.98,7.98,,Wawa visit
+XXXXXX1111,04/15/2026,Salary Payroll,2500.0,,2500.0,Direct Deposit
+XXXXXX1111,04/15/2026,Wawa Store,-18.92,18.92,,Wawa visit
+XXXXXX1111,04/17/2026,Wawa Store,-5.43,5.43,,Wawa visit
+XXXXXX1111,04/18/2026,Aldi,-65.0,65.0,,Weekly Groceries
+XXXXXX1111,04/18/2026,Wawa Store,-9.52,9.52,,Wawa visit
+XXXXXX1111,04/18/2026,Starbucks,-7.5,7.5,,Dining Out
+XXXXXX1111,04/21/2026,Wawa Gas,-21.75,21.75,,Wawa visit
+XXXXXX1111,04/25/2026,Aldi,-65.0,65.0,,Weekly Groceries
+XXXXXX1111,04/27/2026,Wawa Gas,-30.89,30.89,,Wawa visit
+XXXXXX1111,04/28/2026,Applebee's,-45.0,45.0,,Dining Out
+XXXXXX1111,05/01/2026,Salary Payroll,2500.0,,2500.0,Direct Deposit
+XXXXXX1111,05/02/2026,Giant Food,-85.0,85.0,,Weekly Groceries
+XXXXXX1111,05/05/2026,Transfer to Savings,-500.0,500.0,,Savings account funding
+XXXXXX1111,05/05/2026,CC Payment,-800.0,800.0,,Credit card bill
+XXXXXX1111,05/05/2026,PayPal Funding Transfer,-200.0,200.0,,Funding PayPal balance
+XXXXXX1111,05/05/2026,Starbucks,-7.5,7.5,,Dining Out
+XXXXXX1111,05/06/2026,Wawa Gas,-33.2,33.2,,Wawa visit
+XXXXXX1111,05/08/2026,Wawa Store,-12.85,12.85,,Wawa visit
+XXXXXX1111,05/09/2026,Wegmans,-120.0,120.0,,Weekly Groceries
+XXXXXX1111,05/10/2026,Wawa Gas,-22.36,22.36,,Wawa visit
+XXXXXX1111,05/13/2026,Wawa Store,-14.86,14.86,,Wawa visit
+XXXXXX1111,05/14/2026,Wawa Store,-12.49,12.49,,Wawa visit
+XXXXXX1111,05/15/2026,Salary Payroll,2500.0,,2500.0,Direct Deposit
+XXXXXX1111,05/15/2026,Wawa Store,-18.65,18.65,,Wawa visit
+XXXXXX1111,05/16/2026,Giant Food,-85.0,85.0,,Weekly Groceries
+XXXXXX1111,05/16/2026,Starbucks,-7.5,7.5,,Dining Out
+XXXXXX1111,05/17/2026,Applebee's,-45.0,45.0,,Dining Out
+XXXXXX1111,05/18/2026,Wawa Store,-7.53,7.53,,Wawa visit
+XXXXXX1111,05/23/2026,Wegmans,-120.0,120.0,,Weekly Groceries
+XXXXXX1111,05/23/2026,Wawa Gas,-28.58,28.58,,Wawa visit
+XXXXXX1111,05/24/2026,McDonald's,-12.5,12.5,,Dining Out
+XXXXXX1111,05/25/2026,Wawa Gas,-24.8,24.8,,Wawa visit
+XXXXXX1111,05/30/2026,Aldi,-65.0,65.0,,Weekly Groceries
+XXXXXX1111,05/30/2026,Wawa Gas,-22.59,22.59,,Wawa visit
+XXXXXX1111,05/30/2026,McDonald's,-12.5,12.5,,Dining Out

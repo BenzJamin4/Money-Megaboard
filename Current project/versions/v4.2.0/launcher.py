@@ -82,9 +82,17 @@ def main():
     def on_closing():
         downloads_dir = os.path.join(VERSION_DIR, "static", "downloads")
         try:
-            import glob
-            for f in glob.glob(os.path.join(downloads_dir, "*.csv")):
-                os.remove(f)
+            import shutil
+            if os.path.exists(downloads_dir):
+                for filename in os.listdir(downloads_dir):
+                    file_path = os.path.join(downloads_dir, filename)
+                    try:
+                        if os.path.isfile(file_path) or os.path.islink(file_path):
+                            os.unlink(file_path)
+                        elif os.path.isdir(file_path):
+                            shutil.rmtree(file_path)
+                    except Exception:
+                        pass
         except Exception:
             pass
 

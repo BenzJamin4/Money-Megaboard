@@ -76,6 +76,7 @@
             <button id="readmeChangelogBtn" style="font-size: 0.65em; padding: 3px 10px; background: #000; color: #fff; cursor: pointer; font-weight: bold; border: 2px solid #000; margin-left: 10px; vertical-align: middle; font-family: 'Jeepers', 'Scooby Doo', cursive;">CHANGELOG</button>
             <button id="restartBtn" style="font-size: 0.65em; padding: 3px 10px; background: #e67e22; color: #fff; cursor: pointer; font-weight: bold; border: 2px solid #000; margin-left: 10px; vertical-align: middle;">RESTART</button>
             <button id="quitBtn" style="font-size: 0.65em; padding: 3px 10px; background: #c0392b; color: #fff; cursor: pointer; font-weight: bold; border: 2px solid #000; margin-left: 10px; vertical-align: middle;">QUIT</button>
+            <button id="resetBtn" style="font-size: 0.65em; padding: 3px 10px; background: #e74c3c; color: #fff; cursor: pointer; font-weight: bold; border: 2px solid #000; margin-left: 10px; vertical-align: middle;">RESET</button>
         </h2>
         <div id="activeChangelogBox"
             style="font-family: 'Comic Sans MS', 'Comic Sans', cursive; font-size: 12px; margin-bottom: 25px; margin-top: 15px; white-space: pre-wrap; background: #fff; padding: 15px; border: 2px solid #000; box-shadow: 4px 4px 0px #000;">{{ active_changelog }}</div>
@@ -109,6 +110,12 @@
                     <button id="downloadGhostCsvBtn"
                         style="padding: 10px 10px; background: #e67e22; color: #ffffff; cursor: pointer; font-weight: bold; height: fit-content; border: 2px solid #000; text-shadow: 1px 1px 1px #000; display: none;">Download
                         Tracked Ghost CSVs</button>
+                    <button id="downloadMegaCsvBtn"
+                        style="padding: 10px 10px; background: #27ae60; color: #ffffff; cursor: pointer; font-weight: bold; height: fit-content; border: 2px solid #000; text-shadow: 1px 1px 1px #000; display: none; margin-left: 10px;">Download
+                        Combined Mega CSV</button>
+                    <button id="exportSettingsBtn"
+                        style="padding: 10px 10px; background: #8e44ad; color: #ffffff; cursor: pointer; font-weight: bold; height: fit-content; border: 2px solid #000; text-shadow: 1px 1px 1px #000; margin-left: 10px;">Export
+                        Settings JSON</button>
                 </div>
                 <div>
                     <button id="clearStorageBtn"

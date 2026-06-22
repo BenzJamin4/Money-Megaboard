@@ -1,11 +1,13 @@
 CHANGELOG:
 
-v4.2.0 (Title)
+v4.2.0 (CSV Mapper & Data States)
 Features:
-- 
-
-Bug Fixes:
--
+- Atomic Data Persistence: Rebuild settings load/save to write to a temporary file and atomically rename using `os.replace` to prevent data corruption.
+- Automatic Personal Data Wipe on Exit: Cleanly deletes all processed files in the `static/downloads/` runtime folder on exit to ensure privacy.
+- Reset Factory Restore Button: Added a RESET button in the header to wipe all settings, delete cache payloads, and reload the application.
+- Automatic Mock Demo Mode: Automatically parses and loads 250+ dummy transactions (Checking, Savings, CreditCard, and PayPal) when starting up without data loaded.
+- Missing Data Validation: Prevents CSV processing and alerts the user with a popup if Date or Amount column mappings are missing.
+- CSV & JSON Backup Exports: Added buttons to download a combined Mega CSV ledger of all active/ghost accounts and to export settings as a JSON backup.
 
 v4.1.0 (Version Switcher & Desktop Controls)
 Features:

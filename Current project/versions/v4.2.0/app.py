@@ -141,12 +141,8 @@ def load_data():
         try:
             with open(DATA_FILE, 'r') as f:
                 return json.load(f)
-        except (PermissionError, OSError):
-            # File exists but can't be read (quarantine) — remove it
-            try:
-                os.remove(DATA_FILE)
-            except Exception:
-                pass
+        except (PermissionError, OSError) as e:
+            print(f"Permission or OS error loading {DATA_FILE}: {e}")
     return {
         "customCategories": {},
         "isolatedTxs": {},
@@ -156,17 +152,41 @@ def load_data():
     }
 
 def save_data(data):
+    temp_file = DATA_FILE + ".tmp"
     try:
-        with open(DATA_FILE, 'w') as f:
+        # Write to temporary file first
+        with open(temp_file, 'w') as f:
             json.dump(data, f, indent=4)
-    except PermissionError:
-        # File has quarantine attributes — delete and recreate
-        try:
-            os.remove(DATA_FILE)
-        except Exception:
-            pass
-        with open(DATA_FILE, 'w') as f:
-            json.dump(data, f, indent=4)
+        # Atomically replace active file
+        os.replace(temp_file, DATA_FILE)
+    except (PermissionError, OSError) as e:
+        # Clean up temp file if it exists
+        if os.path.exists(temp_file):
+            try:
+                os.remove(temp_file)
+            except Exception:
+                pass
+        raise e
+
+
+
+def wipe_personal_data():
+    try:
+        base_dir = os.path.dirname(os.path.abspath(__file__))
+        downloads_dir = os.path.join(base_dir, "static", "downloads")
+        if os.path.exists(downloads_dir):
+            import shutil
+            for filename in os.listdir(downloads_dir):
+                file_path = os.path.join(downloads_dir, filename)
+                try:
+                    if os.path.isfile(file_path) or os.path.islink(file_path):
+                        os.unlink(file_path)
+                    elif os.path.isdir(file_path):
+                        shutil.rmtree(file_path)
+                except Exception:
+                    pass
+    except Exception:
+        pass
 
 
 def parse_amount(val_str):
@@ -621,6 +641,203 @@ def apply_transfer_rules(transactions, rules):
                     break
 
 
+def parse_dummy_csvs(dummy_dir):
+    transactions = []
+    
+    checking_path = os.path.join(dummy_dir, "Dummy_Checking.csv")
+    savings_path = os.path.join(dummy_dir, "Dummy_Savings.csv")
+    cc_path = os.path.join(dummy_dir, "Dummy_CreditCard.csv")
+    paypal_path = os.path.join(dummy_dir, "Dummy_PayPal.csv")
+    
+    app_data = load_data()
+    custom_categories = app_data.get('customCategories', {})
+    rules = app_data.get('transferRules', [])
+    
+    def parse_bank_file(path, account_default):
+        rows = []
+        if not os.path.exists(path):
+            return
+        with open(path, "r", encoding="utf-8") as f:
+            reader = csv.reader(f)
+            header = next(reader, None)
+            if not header:
+                return
+            for row in reader:
+                if not row or len(row) < 7:
+                    continue
+                acc, date_str, desc, amt_str, debit_str, credit_str, notes = row
+                
+                try:
+                    dt = datetime.strptime(date_str, "%m/%d/%Y")
+                except Exception:
+                    continue
+                    
+                amt = 0.0
+                try:
+                    amt = float(amt_str)
+                except ValueError:
+                    c_val = parse_amount(credit_str)
+                    d_val = parse_amount(debit_str)
+                    amt = c_val - d_val
+                    
+                norm_desc = normalize_desc(desc)
+                tx_id = f"{int(dt.timestamp() * 1000)}_{amt}_{re.sub(r'[^a-zA-Z0-9]', '', desc)}"
+                cat = guess_category(desc, amt, custom_categories)
+                
+                rows.append({
+                    "id": tx_id,
+                    "date": dt.isoformat(),
+                    "desc": desc,
+                    "normalizedDesc": norm_desc,
+                    "amount": amt,
+                    "notes": notes,
+                    "category": cat,
+                    "originalCategory": guess_category(desc, amt, custom_categories),
+                    "account": acc if acc else account_default,
+                    "isTransfer": False,
+                    "isHidden": False,
+                    "isolate": False,
+                    "transferPartnerTxId": None
+                })
+        transactions.extend(rows)
+        
+    def parse_cc_file(path):
+        rows = []
+        if not os.path.exists(path):
+            return
+        with open(path, "r", encoding="utf-8") as f:
+            reader = csv.reader(f)
+            header = next(reader, None)
+            if not header:
+                return
+            for row in reader:
+                if not row or len(row) < 3:
+                    continue
+                date_str, desc, amt_str = row[0], row[1], row[2]
+                memo = row[3] if len(row) > 3 else ""
+                
+                try:
+                    dt = datetime.strptime(date_str, "%m/%d/%Y")
+                except Exception:
+                    continue
+                    
+                amt = parse_amount(amt_str)
+                norm_desc = normalize_desc(desc)
+                tx_id = f"{int(dt.timestamp() * 1000)}_{amt}_{re.sub(r'[^a-zA-Z0-9]', '', desc)}"
+                cat = guess_category(desc, amt, custom_categories)
+                
+                rows.append({
+                    "id": tx_id,
+                    "date": dt.isoformat(),
+                    "desc": desc,
+                    "normalizedDesc": norm_desc,
+                    "amount": amt,
+                    "notes": memo,
+                    "category": cat,
+                    "originalCategory": guess_category(desc, amt, custom_categories),
+                    "account": "Dummy CreditCard",
+                    "isTransfer": False,
+                    "isHidden": False,
+                    "isolate": False,
+                    "transferPartnerTxId": None
+                })
+        transactions.extend(rows)
+
+    def parse_paypal_file(path):
+        if not os.path.exists(path):
+            return
+        df = pd.read_csv(path, index_col=None, header=0, low_memory=False)
+        clean_export, debug_export = build_paypal_exports(df)
+        
+        base_dir = os.path.dirname(os.path.abspath(__file__))
+        debug_path = os.path.join(base_dir, "static", "downloads", "PayPal_DEBUG_LOG.csv")
+        master_path = os.path.join(base_dir, "static", "downloads", "PayPal_Master_History.csv")
+        os.makedirs(os.path.dirname(debug_path), exist_ok=True)
+        debug_export.to_csv(debug_path, index=False)
+        clean_export.to_csv(master_path, index=False)
+        
+        rows = []
+        for index, r in clean_export.iterrows():
+            date_str = str(r.get('Date', ''))
+            time_str = str(r.get('Time', ''))
+            name = str(r.get('Name', ''))
+            typ = str(r.get('Type', ''))
+            gross_str = str(r.get('Gross', '0'))
+            
+            try:
+                dt_str = f"{date_str} {time_str}".strip()
+                dt = datetime.strptime(dt_str, "%m/%d/%Y %H:%M:%S")
+            except Exception:
+                try:
+                    dt = datetime.strptime(date_str, "%m/%d/%Y")
+                except Exception:
+                    continue
+            
+            amt = parse_amount(gross_str)
+            desc = name if name else typ
+            norm_desc = normalize_desc(desc)
+            tx_id = f"{int(dt.timestamp() * 1000)}_{amt}_{re.sub(r'[^a-zA-Z0-9]', '', desc)}"
+            cat = guess_category(desc, amt, custom_categories)
+            
+            rows.append({
+                "id": tx_id,
+                "date": dt.isoformat(),
+                "desc": desc,
+                "normalizedDesc": norm_desc,
+                "amount": amt,
+                "notes": typ,
+                "category": cat,
+                "originalCategory": guess_category(desc, amt, custom_categories),
+                "account": "Dummy PayPal",
+                "isTransfer": False,
+                "isHidden": False,
+                "isolate": False,
+                "transferPartnerTxId": None
+            })
+        transactions.extend(rows)
+        
+    parse_bank_file(checking_path, "Dummy Checking")
+    parse_bank_file(savings_path, "Dummy Savings")
+    parse_cc_file(cc_path)
+    parse_paypal_file(paypal_path)
+    
+    # Sort backwards by date
+    transactions.sort(key=lambda x: x['date'], reverse=True)
+    
+    # Apply transfer rules
+    apply_transfer_rules(transactions, rules)
+    
+    return transactions
+
+
+@app.route('/api/init-data', methods=['GET'])
+def init_data():
+    try:
+        base_dir = os.path.dirname(os.path.abspath(__file__))
+        payload_path = os.path.join(base_dir, 'static', 'downloads', 'debug_frontend_payload.json')
+        
+        # 1. If debug_frontend_payload.json exists, return it!
+        if os.path.exists(payload_path):
+            with open(payload_path, 'r', encoding='utf-8') as f:
+                transactions = json.load(f)
+            return jsonify({"transactions": transactions})
+            
+        # 2. Otherwise load dummy data
+        dummy_dir = os.path.abspath(os.path.join(base_dir, "..", "..", "..", "Development Tools", "Dummy CSVs"))
+        if os.path.exists(dummy_dir):
+            mock_transactions = parse_dummy_csvs(dummy_dir)
+            
+            os.makedirs(os.path.dirname(payload_path), exist_ok=True)
+            with open(payload_path, 'w', encoding='utf-8') as f:
+                json.dump(mock_transactions, f, indent=2)
+                
+            return jsonify({"transactions": mock_transactions})
+            
+        return jsonify({"transactions": []})
+    except Exception as e:
+        return jsonify({"error": str(e)}), 500
+
+
 # --- ROUTES ---
 
 @app.route('/')
@@ -660,7 +877,10 @@ def switch_version():
         with open(restart_path, "w") as f:
             f.write("true")
             
-        # 3. Natively crash this process securely so the pywebview window dies instantly and hands execution back to the `.app` shell wrapper
+        # 3. Wipe personal data
+        wipe_personal_data()
+            
+        # 4. Natively crash this process securely so the pywebview window dies instantly and hands execution back to the `.app` shell wrapper
         import threading
         def hard_kill():
             import time
@@ -736,6 +956,11 @@ def process_data():
             dr_idx = get_idx('debit')
             cr_idx = get_idx('credit')
             n_indices = get_idx_list('notes')
+            
+            if not d_indices:
+                return jsonify({"error": f"Uploaded CSV for '{account_name}' lacks a Date column mapping. Please map a Date column."}), 400
+            if not a_indices and (dr_idx == -1 or cr_idx == -1):
+                return jsonify({"error": f"Uploaded CSV for '{account_name}' lacks an Amount or Debit/Credit column mapping. Please map these columns."}), 400
             
             status_idx = next((i for i, h in enumerate(headers) if h.lower() == 'status'), -1)
             type_idx = next((i for i, h in enumerate(headers) if h.lower() == 'type'), -1)
@@ -923,14 +1148,7 @@ def clear_data():
         "transferRules": []
     })
     
-    try:
-        if os.path.exists(os.path.join('static', 'downloads', 'PayPal_DEBUG_LOG.csv')):
-            os.remove(os.path.join('static', 'downloads', 'PayPal_DEBUG_LOG.csv'))
-        if os.path.exists(os.path.join('static', 'downloads', 'PayPal_Master_History.csv')):
-            os.remove(os.path.join('static', 'downloads', 'PayPal_Master_History.csv'))
-    except Exception as e:
-        print("Error removing files:", e)
-        pass
+    wipe_personal_data()
 
     return jsonify({"status": "success"})
 
@@ -949,14 +1167,8 @@ def quit_app():
             except Exception:
                 pass
                 
-        # Replicate cleanup of downloads directory
-        downloads_dir = os.path.join(base_dir, "static", "downloads")
-        try:
-            import glob
-            for f in glob.glob(os.path.join(downloads_dir, "*.csv")):
-                os.remove(f)
-        except Exception:
-            pass
+        # Wipe all personal data
+        wipe_personal_data()
             
         # Kill the process after a short delay
         import threading
@@ -983,14 +1195,8 @@ def restart_app():
         with open(restart_path, "w") as f:
             f.write("true")
             
-        # Replicate cleanup of downloads directory
-        downloads_dir = os.path.join(base_dir, "static", "downloads")
-        try:
-            import glob
-            for f in glob.glob(os.path.join(downloads_dir, "*.csv")):
-                os.remove(f)
-        except Exception:
-            pass
+        # Wipe all personal data
+        wipe_personal_data()
             
         # Kill the process after a short delay
         import threading

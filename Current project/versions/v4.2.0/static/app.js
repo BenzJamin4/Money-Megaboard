@@ -32,6 +32,9 @@ window.onload = async () => {
     renderTransferRules();
     renderCategoryColors();
     renderBalanceColors();
+
+    // Load initial mock demo or cached transaction session
+    await loadInitialData();
 };
 
 async function downloadGhostCSV() {
@@ -97,9 +100,13 @@ async function saveSettingsToServer() {
             const status = document.getElementById("saveStatus");
             status.innerText = "Saved to Server \u2713";
             setTimeout(() => status.innerText = "", 2000);
+        } else {
+            const errData = await res.json().catch(() => ({}));
+            alert("Error saving settings: " + (errData.message || "Unknown error"));
         }
     } catch (e) {
         console.error("Failed to save settings to server:", e);
+        alert("Failed to connect to server to save settings.");
     }
 }
 
@@ -253,6 +260,21 @@ function setupEventListeners() {
             document.body.innerHTML = '<div style="display:flex;justify-content:center;align-items:center;height:100vh;font-family:sans-serif;font-size:24px;font-weight:bold;background:#ffffff;color:#000000;">Closing Megaboard...</div>';
             await fetch('/api/quit', { method: 'POST' });
         }
+    });
+
+    document.getElementById("resetBtn").addEventListener("click", (e) => {
+        e.preventDefault();
+        document.getElementById("customModalOverlay").style.display = "flex";
+    });
+
+    document.getElementById("downloadMegaCsvBtn").addEventListener("click", (e) => {
+        e.preventDefault();
+        downloadMegaCSV();
+    });
+
+    document.getElementById("exportSettingsBtn").addEventListener("click", (e) => {
+        e.preventDefault();
+        exportSettingsJSON();
     });
 }
 
@@ -455,6 +477,21 @@ async function saveMappingsFromUI() {
 
 
 async function processGroupsViaBackend() {
+    // Validate that each group has Date and Amount (or Debit/Credit) column mappings
+    for (const group of Object.values(pendingGroups)) {
+        const mapping = appSettings.csvMappings[group.mappingKey] || {};
+        
+        const hasDate = mapping.date && (Array.isArray(mapping.date) ? mapping.date.length > 0 : mapping.date !== "");
+        
+        const hasAmountDirect = mapping.amount && (Array.isArray(mapping.amount) ? mapping.amount.length > 0 : mapping.amount !== "");
+        const hasDebitCredit = (mapping.debit && mapping.debit !== "") && (mapping.credit && mapping.credit !== "");
+        
+        if (!hasDate || (!hasAmountDirect && !hasDebitCredit)) {
+            alert(`Error: The column mapping for "${group.displayName}" is missing a Date or Amount column. Please drag the appropriate column headers to the Date and Amount mapping boxes before loading.`);
+            return;
+        }
+    }
+
     const payload = {
         groups: Object.values(pendingGroups)
     };
@@ -470,6 +507,12 @@ async function processGroupsViaBackend() {
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify(payload)
         });
+
+        if (!res.ok) {
+            const errData = await res.json().catch(() => ({}));
+            alert("Error processing CSV: " + (errData.error || "Invalid file format or column mappings."));
+            return;
+        }
 
         const data = await res.json();
 
@@ -587,6 +630,10 @@ function renderTransferRules() {
     const ghostBtn = document.getElementById("downloadGhostCsvBtn");
     if (ghostBtn) {
         ghostBtn.style.display = ghostAccounts.size > 0 ? "inline-block" : "none";
+    }
+    const megaBtn = document.getElementById("downloadMegaCsvBtn");
+    if (megaBtn) {
+        megaBtn.style.display = allTransactions.length > 0 ? "inline-block" : "none";
     }
 }
 
@@ -1434,4 +1481,109 @@ function updatePieCharts() {
 
     if (pieChartExpenses) pieChartExpenses.destroy(); pieChartExpenses = renderPie(document.getElementById("pieChartExpenses"), expData, "expensesLegend");
     if (pieChartIncome) pieChartIncome.destroy(); pieChartIncome = renderPie(document.getElementById("pieChartIncome"), incData, "incomeLegend");
+}
+
+
+// --- ATOMIC DATA BACKUPS, MOCK MODE & LEDGER EXPORTS ---
+
+async function loadInitialData() {
+    try {
+        const res = await fetch('/api/init-data');
+        if (!res.ok) return;
+        const data = await res.json();
+        if (data.transactions && data.transactions.length > 0) {
+            allTransactions = data.transactions.map(t => {
+                t.date = new Date(t.date);
+                return t;
+            });
+            
+            if (allTransactions.length) {
+                document.getElementById("startDate").value = allTransactions[allTransactions.length - 1].date.toISOString().split('T')[0];
+                document.getElementById("endDate").value = allTransactions[0].date.toISOString().split('T')[0];
+            }
+            
+            renderTable();
+            updateCharts();
+        }
+    } catch (e) {
+        console.error("Failed to load initial data:", e);
+    }
+}
+
+async function downloadMegaCSV() {
+    if (!allTransactions || allTransactions.length === 0) {
+        alert("No transaction data available to export.");
+        return;
+    }
+    
+    const rows = [];
+    rows.push(["Date", "Description", "Amount", "Account", "Category", "Notes", "Is Transfer", "Is Ghost"]);
+    
+    const addedGhostTxIds = new Set();
+    const sortedTxs = [...allTransactions].sort((a, b) => a.date - b.date);
+    
+    sortedTxs.forEach(tx => {
+        const dateStr = tx.date.toLocaleDateString('en-US');
+        rows.push([
+            dateStr,
+            tx.desc,
+            tx.amount.toFixed(2),
+            tx.account,
+            tx.category,
+            tx.notes || "",
+            tx.isTransfer ? "TRUE" : "FALSE",
+            "FALSE"
+        ]);
+        
+        if (tx.isTransfer && tx.transferPartnerAccount && !tx.transferPartnerTxId && !addedGhostTxIds.has(tx.id)) {
+            const ghostAmt = -(tx.amount);
+            rows.push([
+                dateStr,
+                `Transfer with ${tx.account}`,
+                ghostAmt.toFixed(2),
+                tx.transferPartnerAccount,
+                "Transfers",
+                tx.notes || "",
+                "TRUE",
+                "TRUE"
+            ]);
+            addedGhostTxIds.add(tx.id);
+        }
+        if (tx.isolate && tx.category === 'Transfers' && tx.manualTransferAccount && !addedGhostTxIds.has(tx.id)) {
+            const ghostAmt = -(tx.amount);
+            rows.push([
+                dateStr,
+                `Transfer with ${tx.account}`,
+                ghostAmt.toFixed(2),
+                tx.manualTransferAccount,
+                "Transfers",
+                tx.notes || "",
+                "TRUE",
+                "TRUE"
+            ]);
+            addedGhostTxIds.add(tx.id);
+        }
+    });
+    
+    let csvContent = rows.map(e => e.map(cell => `"${String(cell).replace(/"/g, '""')}"`).join(",")).join("\n");
+    const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
+    const url = URL.createObjectURL(blob);
+    const link = document.createElement("a");
+    link.setAttribute("href", url);
+    link.setAttribute("download", "Mega_Combined_Ledger.csv");
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+}
+
+function exportSettingsJSON() {
+    const settingsContent = JSON.stringify(appSettings, null, 4);
+    const blob = new Blob([settingsContent], { type: 'application/json;charset=utf-8;' });
+    const url = URL.createObjectURL(blob);
+    const link = document.createElement("a");
+    link.setAttribute("href", url);
+    link.setAttribute("download", "megaboard_settings_backup.json");
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
 }
