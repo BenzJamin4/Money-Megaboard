@@ -44,7 +44,7 @@ while true; do
         exit 1
     fi
 
-    \"$PYTHON\" \"$LATEST/launcher.py\" > /dev/null 2>&1
+    \"$PYTHON\" \"$LATEST/launcher.py\" >> \"$APP_DIR/shared/launcher.log\" 2>&1
 
     if [ -f \"$RESTART_FLAG\" ]; then
         rm -f \"$RESTART_FLAG\"

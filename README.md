@@ -1,5 +1,18 @@
 CHANGELOG:
 
+v4.1.0 (Version Switcher & Desktop Controls)
+Features:
+- Smart Version Switcher Dropdown: Filter the versions list inside the dropdown to only show versions starting with the current major version. Shows only the highest patch version for any fully polished branch and all patches of the latest active branch.
+- Smart Changelog Parser: Read README.md in the root, parse out the block corresponding to the active version string, and serve it to the changelog box.
+- Quit Button: Cleanly terminates the PyWebView window and tells the AppleScript runner loop to exit without rebooting.
+- Restart Button: Writes restart_flag to the shared folder and exits the Python process, prompting the AppleScript loop to reboot the server instantly.
+- Interactive Version Bumper: Automatically increments version, copies files, prepends README.md, and creates a git snapshot commit.
+
+Bug Fixes:
+- Ignore older version folders in AI searches by adding a .cursorignore file.
+- Clean up gitignore to only ignore log files inside mac commands instead of ignoring the whole folder.
+- Redirect AppleScript launcher errors to shared/launcher.log instead of silencing them.
+
 v4.0.5 (Feature Polish & Bug Fixes)
 Features:
 - Updated the PayPal CSV mapper default label to "PayPal (cleaned)".
