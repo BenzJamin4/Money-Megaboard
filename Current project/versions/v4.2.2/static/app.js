@@ -251,28 +251,33 @@ function setupEventListeners() {
                 return;
             }
             const data = await res.json();
-            if (data.transactions) {
-                allTransactions = data.transactions.map(t => {
-                    t.date = new Date(t.date);
-                    return t;
-                });
-                
-                if (allTransactions.length) {
-                    document.getElementById("startDate").value = allTransactions[allTransactions.length - 1].date.toISOString().split('T')[0];
-                    document.getElementById("endDate").value = allTransactions[0].date.toISOString().split('T')[0];
+            if (data.files) {
+                pendingGroups = {};
+                for (let file of data.files) {
+                    const mappingKey = file.mappingKey;
+                    const displayName = file.displayName;
+                    const headers = file.rows[0].map(h => h.trim());
+                    
+                    pendingGroups[mappingKey] = {
+                        mappingKey,
+                        displayName,
+                        headers,
+                        filesData: [{
+                            fileName: file.fileName,
+                            rows: file.rows,
+                            accountName: file.accountName
+                        }]
+                    };
                 }
                 
-                // Hide column mapper UI since demo data is pre-mapped
-                document.getElementById("mappingContainer").style.display = "none";
+                // Show column mapper UI so the user can see/demo it
+                document.getElementById("mappingContainer").style.display = "block";
                 
                 // Auto show/hide paypal downloads
-                const hasPayPal = allTransactions.some(t => t.account && t.account.toLowerCase().includes("paypal"));
+                const hasPayPal = data.files.some(f => f.mappingKey === "paypal");
                 document.getElementById("paypalDownloads").style.display = hasPayPal ? "block" : "none";
                 
-                renderTable();
-                updateCharts();
-                renderTransferRules();
-                alert("Demo CSVs loaded successfully!");
+                renderMappingUI();
             }
         } catch (err) {
             console.error("Error loading demo data:", err);
@@ -317,7 +322,6 @@ function setupEventListeners() {
                 });
 
                 if (response.ok) {
-                    alert("Settings imported successfully! The application will now reload.");
                     location.reload();
                 } else {
                     const errData = await response.json().catch(() => ({}));

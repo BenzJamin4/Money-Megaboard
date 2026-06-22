@@ -78,6 +78,7 @@ def main():
         height=900,
         min_size=(900, 600),
     )
+    flask_app.webview_window = window
     # When the window closes, perform cleanup of sensitive generated files
     def on_closing():
         downloads_dir = os.path.join(VERSION_DIR, "static", "downloads")

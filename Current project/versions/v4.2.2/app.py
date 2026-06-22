@@ -170,6 +170,23 @@ def save_data(data):
 
 
 
+def get_unique_filepath(path):
+    if not os.path.exists(path):
+        return path
+    
+    dir_name, file_name = os.path.split(path)
+    base, ext = os.path.splitext(file_name)
+    
+    counter = 1
+    while True:
+        new_name = f"{base} ({counter}){ext}"
+        new_path = os.path.join(dir_name, new_name)
+        if not os.path.exists(new_path):
+            return new_path
+        counter += 1
+
+
+
 def wipe_personal_data():
     try:
         base_dir = os.path.dirname(os.path.abspath(__file__))
@@ -831,19 +848,78 @@ def init_data():
 def load_demo_data():
     try:
         base_dir = os.path.dirname(os.path.abspath(__file__))
-        payload_path = os.path.join(base_dir, 'static', 'downloads', 'debug_frontend_payload.json')
-        
         dummy_dir = os.path.abspath(os.path.join(base_dir, "..", "..", "shared", "Demo CSVs"))
-        if os.path.exists(dummy_dir):
-            mock_transactions = parse_dummy_csvs(dummy_dir)
+        if not os.path.exists(dummy_dir):
+            return jsonify({"error": f"Demo CSVs directory not found at {dummy_dir}"}), 404
             
-            os.makedirs(os.path.dirname(payload_path), exist_ok=True)
-            with open(payload_path, 'w', encoding='utf-8') as f:
-                json.dump(mock_transactions, f, indent=2)
-                
-            return jsonify({"transactions": mock_transactions})
+        files_data = []
+        
+        # Helper to read raw CSV rows
+        def read_csv_rows(path):
+            rows = []
+            with open(path, 'r', encoding='utf-8') as f:
+                reader = csv.reader(f)
+                for r in reader:
+                    rows.append(r)
+            return rows
+
+        checking_path = os.path.join(dummy_dir, "Dummy_Checking.csv")
+        if os.path.exists(checking_path):
+            files_data.append({
+                "fileName": "Dummy_Checking.csv",
+                "rows": read_csv_rows(checking_path),
+                "accountName": "Dummy Checking",
+                "mappingKey": "dummy checking",
+                "displayName": "Dummy Checking"
+            })
             
-        return jsonify({"error": f"Demo CSVs directory not found at {dummy_dir}"}), 404
+        savings_path = os.path.join(dummy_dir, "Dummy_Savings.csv")
+        if os.path.exists(savings_path):
+            files_data.append({
+                "fileName": "Dummy_Savings.csv",
+                "rows": read_csv_rows(savings_path),
+                "accountName": "Dummy Savings",
+                "mappingKey": "dummy savings",
+                "displayName": "Dummy Savings"
+            })
+            
+        cc_path = os.path.join(dummy_dir, "Dummy_CreditCard.csv")
+        if os.path.exists(cc_path):
+            files_data.append({
+                "fileName": "Dummy_CreditCard.csv",
+                "rows": read_csv_rows(cc_path),
+                "accountName": "Dummy CreditCard",
+                "mappingKey": "dummy creditcard",
+                "displayName": "Dummy CreditCard"
+            })
+            
+        paypal_path = os.path.join(dummy_dir, "Dummy_PayPal.csv")
+        if os.path.exists(paypal_path):
+            # We clean it using pandas just like in /api/upload_paypal
+            df = pd.read_csv(paypal_path, index_col=None, header=0, low_memory=False)
+            clean_export, debug_export = build_paypal_exports(df)
+            
+            # Write files to static/downloads so they are ready for download
+            downloads_dir = os.path.join(base_dir, "static", "downloads")
+            os.makedirs(downloads_dir, exist_ok=True)
+            clean_export.to_csv(os.path.join(downloads_dir, "PayPal_Master_History.csv"), index=False)
+            debug_export.to_csv(os.path.join(downloads_dir, "PayPal_DEBUG_LOG.csv"), index=False)
+            
+            # Convert clean_export to list of lists (rows) including header
+            cleaned_rows = [clean_export.columns.tolist()] + clean_export.values.tolist()
+            
+            # Convert float/nan/etc values to clean strings or appropriate JSON types
+            cleaned_rows = [[("" if pd.isna(cell) else str(cell)) for cell in row] for row in cleaned_rows]
+            
+            files_data.append({
+                "fileName": "PayPal_Master_History.csv",
+                "rows": cleaned_rows,
+                "accountName": "PayPal",
+                "mappingKey": "paypal",
+                "displayName": "PayPal (cleaned)"
+            })
+            
+        return jsonify({"files": files_data})
     except Exception as e:
         return jsonify({"error": str(e)}), 500
 
@@ -856,113 +932,139 @@ def download_file():
     filename = data.get('filename')
     content = data.get('content')
     
-    # Resolve Downloads directory
+    # Resolve default Downloads directory and filename
     downloads_dir = os.path.join(os.path.expanduser("~"), "Downloads")
     if not os.path.exists(downloads_dir):
         downloads_dir = os.path.join(os.path.expanduser("~"), "Desktop")
         
     base_dir = os.path.dirname(os.path.abspath(__file__))
     
-    try:
-        if content is not None:
-            if not filename:
-                return jsonify({"error": "Filename is required for custom content download"}), 400
-            dest_path = os.path.join(downloads_dir, filename)
-            with open(dest_path, 'w', encoding='utf-8') as f:
-                f.write(content)
-            return jsonify({"status": "success", "path": dest_path})
-            
+    # 1. Determine source path (if copying) or default filename
+    src_path = None
+    if content is not None:
+        dest_filename = filename or "download.txt"
+    else:
         if file_type == 'cleaned':
             src_path = os.path.join(base_dir, "static", "downloads", "PayPal_Master_History.csv")
-            dest_filename = "PayPal_Master_History_Cleaned.csv"
+            dest_filename = filename or "PayPal_Master_History_Cleaned.csv"
         elif file_type == 'debug':
             src_path = os.path.join(base_dir, "static", "downloads", "PayPal_DEBUG_LOG.csv")
-            dest_filename = "PayPal_DEBUG_LOG.csv"
+            dest_filename = filename or "PayPal_DEBUG_LOG.csv"
         elif file_type == 'mega_csv':
-            src_path = None
-            dest_filename = "Mega_Combined_Ledger.csv"
+            dest_filename = filename or "Mega_Combined_Ledger.csv"
         elif file_type == 'settings':
-            src_path = None
-            dest_filename = "megaboard_settings_backup.json"
+            dest_filename = filename or "megaboard_settings_backup.json"
         else:
             return jsonify({"error": "Unknown file type"}), 400
             
-        dest_path = os.path.join(downloads_dir, dest_filename)
+    # 2. Ask user where to download if running in PyWebView window
+    chosen_path = None
+    if hasattr(app, 'webview_window') and app.webview_window:
+        try:
+            import webview
+            res = app.webview_window.create_file_dialog(
+                webview.SAVE_FILE_DIALOG,
+                directory=downloads_dir,
+                save_filename=dest_filename
+            )
+            if res:
+                if isinstance(res, (list, tuple)):
+                    chosen_path = res[0]
+                else:
+                    chosen_path = res
+            else:
+                # User cancelled the save dialog
+                return jsonify({"status": "cancelled"})
+        except Exception as e:
+            print(f"Error showing PyWebView save dialog: {e}")
+            
+    if not chosen_path:
+        # Fallback to default downloads directory
+        chosen_path = os.path.join(downloads_dir, dest_filename)
         
-        if file_type == 'mega_csv':
-            payload_path = os.path.join(base_dir, 'static', 'downloads', 'debug_frontend_payload.json')
-            if not os.path.exists(payload_path):
-                return jsonify({"error": "No transaction data loaded to export."}), 400
-            with open(payload_path, 'r', encoding='utf-8') as f:
-                transactions = json.load(f)
-            
-            sorted_txs = sorted(transactions, key=lambda x: x['date'])
-            
-            rows = []
-            rows.append(["Date", "Description", "Amount", "Account", "Category", "Notes", "Is Transfer", "Is Ghost"])
-            addedGhostTxIds = set()
-            
-            for tx in sorted_txs:
-                try:
-                    dt = datetime.fromisoformat(tx['date'])
-                    date_str = dt.strftime("%m/%d/%Y")
-                except Exception:
-                    date_str = str(tx['date']).split('T')[0]
-                    
-                rows.append([
-                    date_str,
-                    tx['desc'],
-                    f"{tx['amount']:.2f}",
-                    tx['account'],
-                    tx['category'],
-                    tx.get('notes', ''),
-                    "TRUE" if tx.get('isTransfer') else "FALSE",
-                    "FALSE"
-                ])
-                
-                if tx.get('isTransfer') and tx.get('transferPartnerAccount') and not tx.get('transferPartnerTxId') and tx['id'] not in addedGhostTxIds:
-                    ghost_amt = -tx['amount']
-                    rows.append([
-                        date_str,
-                        f"Transfer with {tx['account']}",
-                        f"{ghost_amt:.2f}",
-                        tx['transferPartnerAccount'],
-                        "Transfers",
-                        tx.get('notes', ''),
-                        "TRUE",
-                        "TRUE"
-                    ])
-                    addedGhostTxIds.add(tx['id'])
-                    
-                if tx.get('isolate') and tx.get('category') == 'Transfers' and tx.get('manualTransferAccount') and tx['id'] not in addedGhostTxIds:
-                    ghost_amt = -tx['amount']
-                    rows.append([
-                        date_str,
-                        f"Transfer with {tx['account']}",
-                        f"{ghost_amt:.2f}",
-                        tx['manualTransferAccount'],
-                        "Transfers",
-                        tx.get('notes', ''),
-                        "TRUE",
-                        "TRUE"
-                    ])
-                    addedGhostTxIds.add(tx['id'])
-            
-            with open(dest_path, 'w', newline='', encoding='utf-8') as f:
-                writer = csv.writer(f)
-                writer.writerows(rows)
-                
-        elif file_type == 'settings':
-            settings_data = load_data()
-            with open(dest_path, 'w', encoding='utf-8') as f:
-                json.dump(settings_data, f, indent=4)
-                
+    # 3. Ensure we don't replace files - generate a unique copy name if it exists
+    final_path = get_unique_filepath(chosen_path)
+    
+    try:
+        # 4. Write or copy content
+        if content is not None:
+            with open(final_path, 'w', encoding='utf-8') as f:
+                f.write(content)
         else:
-            if not os.path.exists(src_path):
-                return jsonify({"error": f"Source file does not exist: {os.path.basename(src_path)}"}), 404
-            shutil.copy2(src_path, dest_path)
-            
-        return jsonify({"status": "success", "path": dest_path})
+            if file_type == 'mega_csv':
+                payload_path = os.path.join(base_dir, 'static', 'downloads', 'debug_frontend_payload.json')
+                if not os.path.exists(payload_path):
+                    return jsonify({"error": "No transaction data loaded to export."}), 400
+                with open(payload_path, 'r', encoding='utf-8') as f:
+                    transactions = json.load(f)
+                
+                sorted_txs = sorted(transactions, key=lambda x: x['date'])
+                
+                rows = []
+                rows.append(["Date", "Description", "Amount", "Account", "Category", "Notes", "Is Transfer", "Is Ghost"])
+                addedGhostTxIds = set()
+                
+                for tx in sorted_txs:
+                    try:
+                        dt = datetime.fromisoformat(tx['date'])
+                        date_str = dt.strftime("%m/%d/%Y")
+                    except Exception:
+                        date_str = str(tx['date']).split('T')[0]
+                        
+                    rows.append([
+                        date_str,
+                        tx['desc'],
+                        f"{tx['amount']:.2f}",
+                        tx['account'],
+                        tx['category'],
+                        tx.get('notes', ''),
+                        "TRUE" if tx.get('isTransfer') else "FALSE",
+                        "FALSE"
+                    ])
+                    
+                    if tx.get('isTransfer') and tx.get('transferPartnerAccount') and not tx.get('transferPartnerTxId') and tx['id'] not in addedGhostTxIds:
+                        ghost_amt = -tx['amount']
+                        rows.append([
+                            date_str,
+                            f"Transfer with {tx['account']}",
+                            f"{ghost_amt:.2f}",
+                            tx['transferPartnerAccount'],
+                            "Transfers",
+                            tx.get('notes', ''),
+                            "TRUE",
+                            "TRUE"
+                        ])
+                        addedGhostTxIds.add(tx['id'])
+                        
+                    if tx.get('isolate') and tx.get('category') == 'Transfers' and tx.get('manualTransferAccount') and tx['id'] not in addedGhostTxIds:
+                        ghost_amt = -tx['amount']
+                        rows.append([
+                            date_str,
+                            f"Transfer with {tx['account']}",
+                            f"{ghost_amt:.2f}",
+                            tx['manualTransferAccount'],
+                            "Transfers",
+                            tx.get('notes', ''),
+                            "TRUE",
+                            "TRUE"
+                        ])
+                        addedGhostTxIds.add(tx['id'])
+                
+                with open(final_path, 'w', newline='', encoding='utf-8') as f:
+                    writer = csv.writer(f)
+                    writer.writerows(rows)
+                    
+            elif file_type == 'settings':
+                settings_data = load_data()
+                with open(final_path, 'w', encoding='utf-8') as f:
+                    json.dump(settings_data, f, indent=4)
+                    
+            else:
+                if not os.path.exists(src_path):
+                    return jsonify({"error": f"Source file does not exist: {os.path.basename(src_path)}"}), 404
+                shutil.copy2(src_path, final_path)
+                
+        return jsonify({"status": "success", "path": final_path})
     except Exception as e:
         return jsonify({"error": str(e)}), 500
 
@@ -1250,12 +1352,13 @@ def upload_paypal():
     clean_export, debug_export = build_paypal_exports(df)
     
     # Save the debug log
-    debug_path = os.path.join('static', 'downloads', 'PayPal_DEBUG_LOG.csv')
+    base_dir = os.path.dirname(os.path.abspath(__file__))
+    debug_path = os.path.join(base_dir, 'static', 'downloads', 'PayPal_DEBUG_LOG.csv')
     os.makedirs(os.path.dirname(debug_path), exist_ok=True)
     debug_export.to_csv(debug_path, index=False)
 
     # Save the cleaned master
-    master_path = os.path.join('static', 'downloads', 'PayPal_Master_History.csv')
+    master_path = os.path.join(base_dir, 'static', 'downloads', 'PayPal_Master_History.csv')
     clean_export.to_csv(master_path, index=False)
     
     # Return cleaned rows as a 2D array [ [header], [row1], [row2] ] for JS parsing

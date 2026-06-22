@@ -1,11 +1,14 @@
 CHANGELOG:
 
-v4.2.2 (Title)
+v4.2.2 (Save dialogs & Demo mapping)
 Features:
-- 
+- Native File Save Dialogs: Replaced default file downloads with PyWebView native cross-platform OS save dialogs, allowing users to select destination folders and custom filenames (falls back to default Downloads folder if run outside PyWebView).
+- Mock CSV Mapper Demo: Clicking "Use Demo CSVs" now retrieves raw rows for mock accounts and populates the CSV Column Mapper UI so you can demo mapping columns manually.
+- Duplicate File Protection: Downloads check if the file already exists in the destination folder, and if so, save as an incremental copy (e.g. `File (1).csv`) instead of replacing the existing file.
 
 Bug Fixes:
--
+- Fixed PayPal debug log download path: Updated relative paths to absolute paths in the PayPal cleaning script so that files are correctly written and found by the download endpoint.
+- Removed success alerts: Deleted browser success alerts after importing settings and loading demo CSVs for a smoother user experience.
 
 v4.2.1 (Downloads & Settings Fixes)
 Features:
