@@ -1,5 +1,12 @@
 CHANGELOG:
 
+v4.2.0 (Title)
+Features:
+- 
+
+Bug Fixes:
+-
+
 v4.1.0 (Version Switcher & Desktop Controls)
 Features:
 - Smart Version Switcher Dropdown: Filter the versions list inside the dropdown to only show versions starting with the current major version. Shows only the highest patch version for any fully polished branch and all patches of the latest active branch.
