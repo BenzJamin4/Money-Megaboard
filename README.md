@@ -1,5 +1,12 @@
 CHANGELOG:
 
+v4.2.3 (Title)
+Features:
+- 
+
+Bug Fixes:
+-
+
 v4.2.2 (Save dialogs & Demo mapping)
 Features:
 - Native File Save Dialogs: Replaced default file downloads with PyWebView native cross-platform OS save dialogs, allowing users to select destination folders and custom filenames (falls back to default Downloads folder if run outside PyWebView).
