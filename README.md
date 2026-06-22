@@ -1,11 +1,17 @@
 CHANGELOG:
 
-v4.3.0 (Title)
+v4.3.1 (Title)
 Features:
 - 
 
 Bug Fixes:
 -
+
+v4.3.0 (Stacked Graph & Cosmetics)
+Features:
+- Stacked Accounts Bar Graph: Added a new stacked bar chart representing balance breakdown of all active accounts stacked together over time. Included brutalist toggle controls to switch between USD ($) and percentage stacks (%).
+- Net Worth Cosmetics: Styled individual account lines on the Net Worth chart to be straight (solid) instead of dashed.
+- Net Worth Sum Node: Added a brutalist header element displaying the Net Worth sum of visible data points.
 
 v4.2.3 (Mapper State Preservation)
 Features:
