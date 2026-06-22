@@ -1,5 +1,12 @@
 CHANGELOG:
 
+v4.3.0 (Title)
+Features:
+- 
+
+Bug Fixes:
+-
+
 v4.2.3 (Mapper State Preservation)
 Features:
 - Settings Import State Preservation: Importing settings JSON while mapping columns no longer reloads the page and clears selected files. Instead, it updates the mapping dropdown selections in place, preserving loaded files.
