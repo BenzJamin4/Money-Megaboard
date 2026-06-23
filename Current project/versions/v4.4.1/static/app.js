@@ -1,4 +1,4 @@
-// app.js - Frontend Logic for Money Megaboard v3.3.4
+// app.js - Frontend Logic for Money Megaboard v4.4.1
 
 let netChart, posNegChart, pieChartExpenses, pieChartIncome, stackedChart;
 let stackedChartMode = 'absolute';
@@ -8,6 +8,7 @@ let currentSortSortOrder = 'desc';
 let currentTimeMode = 'individual';
 let allTransactions = [];
 let pendingGroups = {};
+let expandedGroups = {};
 
 const INCOME_CATS = ["Income", "Dividends", "Transfers", "Other"];
 const EXPENSE_CATS = ["Food", "Transportation", "Shopping", "Education", "Subscription", "Entertainment", "Clothes+Haircuts", "Health", "Transfers", "Other"];
@@ -443,28 +444,12 @@ function setupEventListeners() {
         renderTable();
     });
 
-    // Inline filters input
-    document.querySelectorAll('.col-filter').forEach(inp => {
-        inp.addEventListener('input', () => {
-            const filledFilters = Array.from(document.querySelectorAll('.col-filter'))
-                .filter(i => i.value.trim() !== '');
-            const logicContainer = document.getElementById("filterLogicContainer");
-            const isolateLabel = document.getElementById("headerIsolateLabel");
-            if (filledFilters.length > 1) {
-                if (logicContainer) logicContainer.style.display = "flex";
-                if (isolateLabel) isolateLabel.style.display = "none";
-            } else {
-                if (logicContainer) logicContainer.style.display = "none";
-                if (isolateLabel) isolateLabel.style.display = "inline";
-            }
-            renderTable();
-        });
-    });
-
-    // Filter Logic AND/OR checkbox toggle
-    document.getElementById("filterLogicToggle").addEventListener("change", () => {
-        renderTable();
-    });
+    // Mount first dynamic filter row
+    const thead = document.getElementById("tableThead");
+    if (thead) {
+        const firstFilter = createFilterRowElement();
+        thead.insertBefore(firstFilter, thead.firstChild);
+    }
 
     // Sorting Click Handlers
     document.getElementById("th-isolate").addEventListener("click", () => toggleSort("isolate"));
@@ -1079,6 +1064,120 @@ function highlightKeywords(desc) {
     return result;
 }
 
+// DYNAMIC MULTI-ROW FILTER BUILDER AND MATCHERS
+
+function createFilterRowElement() {
+    const tr = document.createElement("tr");
+    tr.className = "filter-row";
+    tr.style.cssText = "background:#ffffff; border-bottom: 2px solid #000000;";
+    tr.innerHTML = `
+        <th style="padding: 4px; text-align:center; vertical-align: middle;">
+            <div style="display:flex; flex-direction:column; align-items:center; justify-content:center; gap:4px; font-family:sans-serif;">
+                <div style="display:flex; align-items:center; gap:4px;">
+                    <span style="font-weight:bold; font-size:10px;">OR</span>
+                    <div class="ios-switch" style="position:relative; width:44px; height:22px; border:2px solid #000000; background:#ffffff; border-radius:11px; cursor:pointer; display:inline-block; vertical-align:middle; transition:background-color 0.15s ease;">
+                        <input type="checkbox" class="ios-switch-input" style="display:none;">
+                        <div class="ios-switch-thumb" style="position:absolute; top:2px; left:2px; width:14px; height:14px; background:#000000; border-radius:50%; transition:left 0.15s ease, background-color 0.15s ease;"></div>
+                    </div>
+                    <span style="font-weight:bold; font-size:10px;">AND</span>
+                </div>
+                <label style="display:flex; align-items:center; gap:2px; font-size:10px; font-weight:bold; cursor:pointer;">
+                    <input type="checkbox" class="row-not-checkbox" style="width:12px; height:12px; border:2px solid #000; cursor:pointer; margin:0;">
+                    NOT (!)
+                </label>
+            </div>
+        </th>
+        <th style="padding: 4px;"><input type="text" class="col-filter" data-col="date" placeholder="Filter..." style="width:90%; padding:4px; font-size:11px; font-family:sans-serif; box-sizing:border-box;"></th>
+        <th style="padding: 4px;"><input type="text" class="col-filter" data-col="time" placeholder="Filter..." style="width:90%; padding:4px; font-size:11px; font-family:sans-serif; box-sizing:border-box;"></th>
+        <th style="padding: 4px;"><input type="text" class="col-filter" data-col="desc" placeholder="Filter..." style="width:90%; padding:4px; font-size:11px; font-family:sans-serif; box-sizing:border-box;"></th>
+        <th style="padding: 4px;"><input type="text" class="col-filter" data-col="amount" placeholder="Filter..." style="width:90%; padding:4px; font-size:11px; font-family:sans-serif; box-sizing:border-box;"></th>
+        <th style="padding: 4px;"><input type="text" class="col-filter" data-col="category" placeholder="Filter..." style="width:90%; padding:4px; font-size:11px; font-family:sans-serif; box-sizing:border-box;"></th>
+        <th style="padding: 4px;"><input type="text" class="col-filter" data-col="account" placeholder="Filter..." style="width:90%; padding:4px; font-size:11px; font-family:sans-serif; box-sizing:border-box;"></th>
+        <th style="padding: 4px;">
+            <div style="display:flex; align-items:center; gap:4px;">
+                <input type="text" class="col-filter" data-col="notes" placeholder="Filter..." style="flex-grow:1; padding:4px; font-size:11px; font-family:sans-serif; box-sizing:border-box; width: auto;">
+                <button class="add-filter-row-btn" title="Add search row" style="padding: 2px 6px; background: #ffffff; border: 2px solid #000; cursor: pointer; font-size: 13px; font-weight:bold;">+</button>
+                <button class="clear-filters-btn" title="Clear/Delete row" style="padding: 2px 6px; background: #ffffff; border: 2px solid #000; cursor: pointer; font-size: 13px;">🗑️</button>
+            </div>
+        </th>
+    `;
+
+    // Bind switch click logic
+    const sw = tr.querySelector('.ios-switch');
+    const chk = tr.querySelector('.ios-switch-input');
+    const thumb = tr.querySelector('.ios-switch-thumb');
+    sw.addEventListener('click', () => {
+        chk.checked = !chk.checked;
+        thumb.style.left = chk.checked ? '24px' : '2px';
+        sw.style.backgroundColor = chk.checked ? '#000000' : '#ffffff';
+        thumb.style.backgroundColor = chk.checked ? '#ffffff' : '#000000';
+        renderTable();
+    });
+
+    // Bind checkboxes and input events to trigger renderTable()
+    tr.querySelector('.row-not-checkbox').addEventListener('change', () => renderTable());
+    tr.querySelectorAll('.col-filter').forEach(inp => {
+        inp.addEventListener('input', () => renderTable());
+    });
+
+    // Bind add button
+    tr.querySelector('.add-filter-row-btn').addEventListener('click', () => {
+        const nextTr = createFilterRowElement();
+        tr.parentNode.insertBefore(nextTr, tr.nextSibling);
+        renderTable();
+    });
+
+    // Bind clear/delete button
+    tr.querySelector('.clear-filters-btn').addEventListener('click', () => {
+        const allRows = document.querySelectorAll('.filter-row');
+        if (allRows.length > 1) {
+            tr.remove();
+        } else {
+            // clear inputs
+            tr.querySelectorAll('.col-filter').forEach(inp => inp.value = '');
+            tr.querySelector('.row-not-checkbox').checked = false;
+            chk.checked = false;
+            thumb.style.left = '2px';
+            sw.style.backgroundColor = '#ffffff';
+            thumb.style.backgroundColor = '#000000';
+        }
+        renderTable();
+    });
+
+    return tr;
+}
+
+function getFilterState() {
+    const rows = [];
+    document.querySelectorAll('.filter-row').forEach(tr => {
+        const isAnd = tr.querySelector('.ios-switch-input').checked;
+        const isNot = tr.querySelector('.row-not-checkbox').checked;
+        const rowFilters = [];
+        tr.querySelectorAll('.col-filter').forEach(inp => {
+            const val = inp.value.trim().toLowerCase();
+            if (val) {
+                rowFilters.push({ col: inp.dataset.col, val });
+            }
+        });
+        rows.push({
+            isAnd,
+            isNot,
+            filters: rowFilters
+        });
+    });
+    return rows;
+}
+
+function evaluateFilterRow(row, r) {
+    let matches = false;
+    if (r.isAnd) {
+        matches = r.filters.every(f => rowMatchesFilter(row, f.col, f.val));
+    } else {
+        matches = r.filters.some(f => rowMatchesFilter(row, f.col, f.val));
+    }
+    return r.isNot ? !matches : matches;
+}
+
 // HELPER FUNCTIONS FOR HIDING, SORTING, AND FILTERING
 
 function isTxHidden(tx) {
@@ -1303,6 +1402,28 @@ function getIndividualRowData(tx, allAccountsList, isJunk) {
 }
 
 function renderTable() {
+    // A. PRESERVE SCROLL Anchor
+    const container = document.getElementById("tableContainer");
+    let targetId = null;
+    let offsetDiff = 0;
+    if (container) {
+        const tbody = document.getElementById("txnTable");
+        if (tbody) {
+            const rows = Array.from(tbody.querySelectorAll("tr"));
+            for (let row of rows) {
+                const isJunkRow = row.style.opacity === "0.5";
+                if (!isJunkRow) {
+                    if (row.offsetTop >= container.scrollTop) {
+                        const cb = row.querySelector(".isolate-cb") || row.querySelector(".toggle-group-hide-btn") || row.querySelector(".toggle-hide-btn");
+                        targetId = cb ? (cb.dataset.id || cb.dataset.ids) : null;
+                        offsetDiff = row.offsetTop - container.scrollTop;
+                        break;
+                    }
+                }
+            }
+        }
+    }
+
     const activeAccountNames = new Set(allTransactions.map(t => t.account));
     const ghostAccounts = new Set();
     if (appSettings.transferRules) {
@@ -1389,6 +1510,7 @@ function renderTable() {
         processedRows = Object.values(groups).map(g => {
             return {
                 id: g.txs.map(t => t.id).join(","),
+                key: g.key,
                 firstDate: g.firstDate,
                 lastDate: g.lastDate,
                 displayDescText: g.displayDescText,
@@ -1407,19 +1529,23 @@ function renderTable() {
         });
     }
 
-    // 3. Inline Text Filtering
-    const filledFilters = Array.from(document.querySelectorAll('.col-filter'))
-        .map(inp => ({ col: inp.dataset.col, val: inp.value.trim().toLowerCase() }))
-        .filter(f => f.val !== '');
-
-    if (filledFilters.length > 0) {
-        const isAnd = document.getElementById("filterLogicToggle").checked;
+    // 3. Multi-row search filtering
+    const filterState = getFilterState();
+    const activeFilterRows = filterState.filter(r => r.filters.length > 0);
+    
+    if (activeFilterRows.length > 0) {
         processedRows = processedRows.filter(row => {
-            if (isAnd) {
-                return filledFilters.every(f => rowMatchesFilter(row, f.col, f.val));
-            } else {
-                return filledFilters.some(f => rowMatchesFilter(row, f.col, f.val));
+            let matches = evaluateFilterRow(row, activeFilterRows[0]);
+            for (let i = 1; i < activeFilterRows.length; i++) {
+                const r = activeFilterRows[i];
+                const rowMatch = evaluateFilterRow(row, r);
+                if (r.isAnd) {
+                    matches = matches && rowMatch;
+                } else {
+                    matches = matches || rowMatch;
+                }
             }
+            return matches;
         });
     }
 
@@ -1517,22 +1643,36 @@ function renderTable() {
         if (currentTimeMode === 'individual') {
             const hideIcon = row.isJunk ? "👁️" : "❌";
             const hideTitle = row.isJunk ? "Unhide transaction" : "Hide transaction";
+            const buttonHtml = showAllTransactions 
+                ? `<button class="toggle-hide-btn" data-id="${row.id}" title="${hideTitle}" style="padding:2px 4px; background:none; border:2px solid #000; font-size:11px; cursor:pointer; font-weight:bold; line-height:1;">${hideIcon}</button>`
+                : '';
             isolateHtml = `
                 <td style="text-align:center;">
                     <div style="display:flex; align-items:center; justify-content:center; gap:8px;">
                         <input type="checkbox" class="isolate-cb" data-id="${row.id}" ${row.tx.isolate ? 'checked' : ''} ${row.isConsolidatedTransfer && !row.tx.manualTransferAccount ? 'disabled' : ''}>
-                        <button class="toggle-hide-btn" data-id="${row.id}" title="${hideTitle}" style="padding:2px 4px; background:none; border:2px solid #000; font-size:11px; cursor:pointer; font-weight:bold; line-height:1;">${hideIcon}</button>
+                        ${buttonHtml}
                     </div>
                 </td>
             `;
         } else {
             const hideIcon = row.isJunk ? "👁️" : "❌";
             const hideTitle = row.isJunk ? "Unhide all transactions in group" : "Hide all transactions in group";
+            const buttonHtml = showAllTransactions
+                ? `<button class="toggle-group-hide-btn" data-ids="${row.id}" title="${hideTitle}" style="padding:2px 4px; background:none; border:2px solid #000; font-size:11px; cursor:pointer; font-weight:bold; line-height:1;">${hideIcon}</button>`
+                : '';
+            
+            // Emoji folder expand button
+            const isExpanded = !!expandedGroups[row.key];
+            const folderIcon = isExpanded ? "📂" : "📁";
+            const folderTitle = isExpanded ? "Collapse group" : "Expand group";
+            const folderBtn = `<button class="toggle-expand-group-btn" data-key="${row.key}" title="${folderTitle}" style="padding:2px 4px; background:none; border:2px solid #000; font-size:11px; cursor:pointer; font-weight:bold; line-height:1;">${folderIcon}</button>`;
+
             isolateHtml = `
                 <td style="text-align:center;">
                     <div style="display:flex; align-items:center; justify-content:center; gap:8px;">
                         <input type="checkbox" disabled class="isolate-cb" data-id="${row.id}">
-                        <button class="toggle-group-hide-btn" data-ids="${row.id}" title="${hideTitle}" style="padding:2px 4px; background:none; border:2px solid #000; font-size:11px; cursor:pointer; font-weight:bold; line-height:1;">${hideIcon}</button>
+                        ${folderBtn}
+                        ${buttonHtml}
                     </div>
                 </td>
             `;
@@ -1573,6 +1713,70 @@ function renderTable() {
             <td><textarea class="note-input" data-id="${row.id}" style="width:95%; height:30px; resize:vertical;">${row.notes}</textarea></td>
         `;
         tbody.appendChild(tr);
+
+        // Render nested child rows if group is expanded
+        if (currentTimeMode !== 'individual' && expandedGroups[row.key]) {
+            row.txs.forEach(childTx => {
+                const childJunk = isTxHidden(childTx);
+                const childRowData = getIndividualRowData(childTx, allAccountsList, childJunk);
+                const childTr = document.createElement("tr");
+                childTr.style.cssText = "background: #fcfcfc; border-left: 4px solid #3498db; opacity: 0.95;";
+                
+                if (childRowData.isJunk) {
+                    childTr.style.opacity = "0.5";
+                    childTr.style.backgroundColor = "#f0f0f0";
+                }
+
+                const cDateDisplay = childRowData.date.toLocaleDateString();
+                const cTimeDisplay = childRowData.displayTime;
+
+                const cHideIcon = childRowData.isJunk ? "👁️" : "❌";
+                const cHideTitle = childRowData.isJunk ? "Unhide transaction" : "Hide transaction";
+                const cButtonHtml = showAllTransactions 
+                    ? `<button class="toggle-hide-btn" data-id="${childRowData.id}" title="${cHideTitle}" style="padding:2px 4px; background:none; border:2px solid #000; font-size:11px; cursor:pointer; font-weight:bold; line-height:1;">${cHideIcon}</button>`
+                    : '';
+
+                const cIsolateHtml = `
+                    <td style="text-align:center;">
+                        <div style="display:flex; align-items:center; justify-content:center; gap:8px;">
+                            <span style="font-weight:bold; color:#3498db; font-size:14px; margin-right:4px;">↳</span>
+                            <input type="checkbox" class="isolate-cb" data-id="${childRowData.id}" ${childRowData.tx.isolate ? 'checked' : ''} ${childRowData.isConsolidatedTransfer && !childRowData.tx.manualTransferAccount ? 'disabled' : ''}>
+                            ${cButtonHtml}
+                        </div>
+                    </td>
+                `;
+
+                let cAccountHtml = `<td style="color:${childRowData.accountColor}; font-weight:bold;">${childRowData.displayAccount}</td>`;
+                if (childRowData.tx.isolate && childRowData.category === 'Transfers' && !childRowData.isConsolidatedTransfer) {
+                    const otherAccounts = allAccountsList.filter(a => a !== childRowData.tx.account);
+                    cAccountHtml = `<td><select class="ghost-transfer-select" data-id="${childRowData.id}" style="font-weight:bold; width:100%; cursor:pointer; border:2px solid #e67e22; background:#fff3e0;">
+                        <option value="">Select account...</option>
+                        ${otherAccounts.map(a => `<option value="${a}">${a}</option>`).join('')}
+                    </select></td>`;
+                }
+
+                const cCatList = childRowData.amount > 0 ? INCOME_CATS : EXPENSE_CATS;
+                const cCategoryHtml = `
+                    <td style="background:${getCategoryColor(childRowData.category)};">
+                        <select class="cat-select" data-id="${childRowData.id}" style="color:white; background:transparent; border:none; font-weight:bold; width:100%; text-shadow:1px 1px 2px #000; cursor:pointer;">
+                            ${cCatList.map(c => `<option value="${c}" ${childRowData.category === c ? 'selected' : ''}>${c}</option>`).join('')}
+                        </select>
+                    </td>
+                `;
+
+                childTr.innerHTML = `
+                    ${cIsolateHtml}
+                    <td style="font-weight:bold; padding-left: 10px;">${cDateDisplay}</td>
+                    <td style="font-weight:bold; color:#000000; padding-left: 10px;">${cTimeDisplay}</td>
+                    <td title="${childRowData.displayDescText}" style="user-select: text !important; -webkit-user-select: text !important; padding-left: 10px;">${childRowData.displayDescHtml}</td>
+                    <td style="color:${childRowData.amountColor}; font-weight:bold;">${childRowData.amountSign}${childRowData.amount.toFixed(2)}</td>
+                    ${cCategoryHtml}
+                    ${cAccountHtml}
+                    <td><textarea class="note-input" data-id="${childRowData.id}" style="width:95%; height:30px; resize:vertical;">${childRowData.notes}</textarea></td>
+                `;
+                tbody.appendChild(childTr);
+            });
+        }
     });
 
     // 7. Bind Event Listeners
@@ -1619,7 +1823,29 @@ function renderTable() {
         await toggleGroupHidden(ids);
     }));
 
+    document.querySelectorAll('.toggle-expand-group-btn').forEach(btn => btn.addEventListener('click', (e) => {
+        e.preventDefault();
+        const key = e.currentTarget.dataset.key;
+        expandedGroups[key] = !expandedGroups[key];
+        renderTable();
+    }));
+
     renderUnifiedColors();
+
+    // B. RESTORE SCROLL Position
+    if (targetId && container) {
+        const tbody = document.getElementById("txnTable");
+        if (tbody) {
+            const newRows = Array.from(tbody.querySelectorAll("tr"));
+            const targetRow = newRows.find(row => {
+                const cb = row.querySelector(".isolate-cb") || row.querySelector(".toggle-group-hide-btn") || row.querySelector(".toggle-hide-btn");
+                return cb && (cb.dataset.id === targetId || cb.dataset.ids === targetId);
+            });
+            if (targetRow) {
+                container.scrollTop = targetRow.offsetTop - offsetDiff;
+            }
+        }
+    }
 }
 
 async function handleCategoryChange(e) {

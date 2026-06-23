@@ -248,23 +248,7 @@
         </div>
         <div id="tableContainer" style="max-height:600px; overflow:auto; border:3px solid #000000; position:relative;">
             <table style="font-size:12px; width:100%; border-collapse:collapse; text-align: left; background: #ffffff;">
-                <thead style="position:sticky; top:0; background:#ffffff; z-index:2;">
-                    <tr id="filterRow" style="background:#ffffff; border-bottom: 2px solid #000000;">
-                        <th style="padding: 4px; text-align:center; vertical-align: middle;">
-                            <div id="filterLogicContainer" style="display:none; align-items:center; justify-content:center; gap: 4px; font-size: 11px; font-family: sans-serif;">
-                                <span style="font-weight:bold;">OR</span>
-                                <input type="checkbox" id="filterLogicToggle" style="width: 16px; height: 16px; border: 2px solid #000000; cursor: pointer; vertical-align: middle;">
-                                <span style="font-weight:bold;">AND</span>
-                            </div>
-                        </th>
-                        <th style="padding: 4px;"><input type="text" class="col-filter" data-col="date" placeholder="Filter..." style="width:90%; padding:4px; font-size:11px; font-family: sans-serif; box-sizing: border-box;"></th>
-                        <th style="padding: 4px;"><input type="text" class="col-filter" data-col="time" placeholder="Filter..." style="width:90%; padding:4px; font-size:11px; font-family: sans-serif; box-sizing: border-box;"></th>
-                        <th style="padding: 4px;"><input type="text" class="col-filter" data-col="desc" placeholder="Filter..." style="width:90%; padding:4px; font-size:11px; font-family: sans-serif; box-sizing: border-box;"></th>
-                        <th style="padding: 4px;"><input type="text" class="col-filter" data-col="amount" placeholder="Filter..." style="width:90%; padding:4px; font-size:11px; font-family: sans-serif; box-sizing: border-box;"></th>
-                        <th style="padding: 4px;"><input type="text" class="col-filter" data-col="category" placeholder="Filter..." style="width:90%; padding:4px; font-size:11px; font-family: sans-serif; box-sizing: border-box;"></th>
-                        <th style="padding: 4px;"><input type="text" class="col-filter" data-col="account" placeholder="Filter..." style="width:90%; padding:4px; font-size:11px; font-family: sans-serif; box-sizing: border-box;"></th>
-                        <th style="padding: 4px;"><input type="text" class="col-filter" data-col="notes" placeholder="Filter..." style="width:90%; padding:4px; font-size:11px; font-family: sans-serif; box-sizing: border-box;"></th>
-                    </tr>
+                <thead id="tableThead" style="position:sticky; top:0; background:#ffffff; z-index:2;">
                     <tr style="border-bottom: 3px solid #000000;">
                         <th id="th-isolate" style="padding: 8px; text-align:center; cursor:pointer; font-family: sans-serif;">
                             <span id="headerIsolateLabel">Isolate</span>

@@ -1,11 +1,12 @@
 CHANGELOG:
 
-v4.4.1 (Title)
+v4.4.1 (Nested Groupings & Custom Filters)
 Features:
-- 
-
-Bug Fixes:
--
+- Show/Hide Junk Emojis: Hidden manual hide/unhide action icons on the main transaction ledger, showing them only when "Show Junk" mode is active.
+- Scroll Stickiness: Implemented automatic scroll position stickiness to anchor the top-most visible non-junk row in the viewport across re-renders (filters, sorting, toggling junk, notes editing).
+- iOS-Style logic Slider: Swapped the standard filter row checkbox for a custom iOS-style slider switch.
+- Multi-Row Filter Rows: Added support for creating multiple search rows (via `+` button), negating search results per row (via `NOT (!)` checkbox), and deleting/clearing filter rows (via `🗑️` button).
+- Collapsible Nested Groups: Added folder emojis (📁/📂) next to grouped transactions that expand/collapse to draw active constituent child rows nested directly underneath.
 
 v4.4.0 (Transactions Table & Categories)
 Features:
