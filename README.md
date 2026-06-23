@@ -1,5 +1,13 @@
 CHANGELOG:
 
+v4.4.4 (Settings Import Bug Fix & Unique Account Colors)
+Features:
+- Unique Default Account Colors: Refactored default color selection to automatically assign random unique colors from the color picker palette (PRESET_COLORS) to newly discovered active and ghost accounts upon detection, saving them to settings to prevent color shifting.
+
+Bug Fixes:
+- Settings Import Crash: Merged parsed settings JSON with default setting keys upon import and server load using Object.assign(), preventing TypeError crashes on missing properties like hiddenTxs.
+- Defensive Accessors: Added fallback empty objects to transaction hide checks and chart update filters to gracefully handle uninitialized setting objects.
+
 v4.4.3 (Graph Sorting, Stable Colors, & Net Worth Ghosts)
 Features:
 - Custom Negation Box: Upgraded the standard NOT checkbox to a styled `[ ! ]` box that turns solid red when selected and white when inactive.

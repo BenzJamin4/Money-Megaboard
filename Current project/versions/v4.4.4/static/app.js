@@ -13,6 +13,14 @@ let expandedGroups = {};
 const INCOME_CATS = ["Income", "Dividends", "Transfers", "Other"];
 const EXPENSE_CATS = ["Food", "Transportation", "Shopping", "Education", "Subscription", "Entertainment", "Clothes+Haircuts", "Health", "Transfers", "Other"];
 
+const PRESET_COLORS = [
+    "#e74c3c", "#ff7979", "#f0932b", "#f39c12",
+    "#f1c40f", "#f9ca24", "#badc58", "#2ecc71",
+    "#22a6b3", "#3498db", "#2980b9", "#1abc9c",
+    "#9b59b6", "#be2edd", "#ff78cb", "#fd79a8",
+    "#34495e", "#7f8c8d", "#95a5a6", "#bdc3c7"
+];
+
 // Server Settings Object
 let appSettings = {
     customCategories: {},
@@ -901,14 +909,6 @@ async function renderUnifiedColors() {
 
     if (!appSettings.accountColors) appSettings.accountColors = {};
 
-    const PRESET_COLORS = [
-        "#e74c3c", "#ff7979", "#f0932b", "#f39c12",
-        "#f1c40f", "#f9ca24", "#badc58", "#2ecc71",
-        "#22a6b3", "#3498db", "#2980b9", "#1abc9c",
-        "#9b59b6", "#be2edd", "#ff78cb", "#fd79a8",
-        "#34495e", "#7f8c8d", "#95a5a6", "#bdc3c7"
-    ];
-
     const wrapper = document.createElement("div");
     wrapper.style.display = "flex";
     wrapper.style.flexDirection = "row";
@@ -1041,15 +1041,49 @@ function getAccountColor(acc, allAccounts) {
     if (appSettings.accountColors && appSettings.accountColors[acc]) {
         return appSettings.accountColors[acc];
     }
-    const ACCOUNT_COLORS = ["#3498db", "#e74c3c", "#2ecc71", "#f1c40f", "#9b59b6", "#e67e22", "#1abc9c", "#34495e", "#ff78cb", "#be2edd"];
     
     // Stable string hashing to ensure colors are deterministic and don't shift when new accounts/rules are added
     let hash = 0;
     for (let i = 0; i < acc.length; i++) {
         hash = acc.charCodeAt(i) + ((hash << 5) - hash);
     }
-    const idx = Math.abs(hash) % ACCOUNT_COLORS.length;
-    return ACCOUNT_COLORS[idx];
+    const idx = Math.abs(hash) % PRESET_COLORS.length;
+    return PRESET_COLORS[idx];
+}
+
+function initializeAccountColors(allAccountsList) {
+    let changed = false;
+    if (!appSettings.accountColors) {
+        appSettings.accountColors = {};
+    }
+
+    allAccountsList.forEach(acc => {
+        if (!appSettings.accountColors[acc]) {
+            // Find all colors currently used in appSettings.accountColors (case-insensitive)
+            const usedColors = new Set(Object.values(appSettings.accountColors).map(c => c.toLowerCase()));
+            
+            // Filter PRESET_COLORS to find unused ones
+            const unusedColors = PRESET_COLORS.filter(c => !usedColors.has(c.toLowerCase()));
+            
+            let chosenColor = null;
+            if (unusedColors.length > 0) {
+                // Pick a random unused color
+                const randIdx = Math.floor(Math.random() * unusedColors.length);
+                chosenColor = unusedColors[randIdx];
+            } else {
+                // If all are used, pick a random color from the full list
+                const randIdx = Math.floor(Math.random() * PRESET_COLORS.length);
+                chosenColor = PRESET_COLORS[randIdx];
+            }
+            
+            appSettings.accountColors[acc] = chosenColor;
+            changed = true;
+        }
+    });
+
+    if (changed) {
+        saveSettingsToServer();
+    }
 }
 
 function getCategoryColor(cat) {
@@ -1503,6 +1537,7 @@ function renderTable() {
         });
     }
     const allAccountsList = [...new Set([...activeAccountNames, ...ghostAccounts])].sort();
+    initializeAccountColors(allAccountsList);
 
     // 1. Filter Junk / programmatically hidden and manually hidden
     let rowsToProcess = [];
