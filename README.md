@@ -1,5 +1,12 @@
 CHANGELOG:
 
+v4.4.0 (Title)
+Features:
+- 
+
+Bug Fixes:
+-
+
 v4.3.2 (Tooltip Visible Totals on All Charts)
 Features:
 - Tooltip Visible Totals: Added cursor-following "Visible Total: $X.XX" footers to the tooltips of the Income vs Expenses graph (posNegChart) and the Account Bar Graph (stackedChart), displaying net savings and absolute USD visible account totals respectively.
