@@ -1,5 +1,14 @@
 CHANGELOG:
 
+v4.4.3 (Graph Sorting, Stable Colors, & Net Worth Ghosts)
+Features:
+- Custom Negation Box: Upgraded the standard NOT checkbox to a styled `[ ! ]` box that turns solid red when selected and white when inactive.
+- Conditional Logic switch: Configured the OR/AND logic switch on the first search row to stay hidden unless multiple fields are filled OR multiple search rows exist.
+- Graph Click sorting: Set graph jump points to automatically re-sort the transaction ledger by Date (descending) before scrolling, aligning the viewport landing chronologically.
+- Net Worth Line Cosmetics: Removed dot/point rendering from the Total Net Worth line chart to display a smooth net worth trajectory.
+- Deterministic Color Hashing: Swapped dynamic index color selection for a stable account name hashing algorithm, preventing shifts in account colors when adding new rules or ghost accounts.
+- Ghost Accounts in Net Worth: Refactored Net Worth chart tracking to calculate the net worth at each step as the sum of all active account totals (including ghost accounts), capturing synthetic reversed transfers.
+
 v4.4.2 (Fixed Column Widths & Single Clump Time)
 Features:
 - Static Column Sizing: Configured fixed table layout and explicit width percentages/minimum pixel values for all ledger columns to prevent width shifting while typing search inputs.

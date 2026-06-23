@@ -1,4 +1,4 @@
-// app.js - Frontend Logic for Money Megaboard v4.4.2
+// app.js - Frontend Logic for Money Megaboard v4.4.3
 
 let netChart, posNegChart, pieChartExpenses, pieChartIncome, stackedChart;
 let stackedChartMode = 'absolute';
@@ -1022,8 +1022,14 @@ function getAccountColor(acc, allAccounts) {
         return appSettings.accountColors[acc];
     }
     const ACCOUNT_COLORS = ["#3498db", "#e74c3c", "#2ecc71", "#f1c40f", "#9b59b6", "#e67e22", "#1abc9c", "#34495e", "#ff78cb", "#be2edd"];
-    const idx = allAccounts ? allAccounts.indexOf(acc) : 0;
-    return idx !== -1 ? ACCOUNT_COLORS[idx % ACCOUNT_COLORS.length] : "#000000";
+    
+    // Stable string hashing to ensure colors are deterministic and don't shift when new accounts/rules are added
+    let hash = 0;
+    for (let i = 0; i < acc.length; i++) {
+        hash = acc.charCodeAt(i) + ((hash << 5) - hash);
+    }
+    const idx = Math.abs(hash) % ACCOUNT_COLORS.length;
+    return ACCOUNT_COLORS[idx];
 }
 
 function getCategoryColor(cat) {
@@ -1073,7 +1079,7 @@ function createFilterRowElement() {
     tr.innerHTML = `
         <th style="padding: 4px; text-align:center; vertical-align: middle; width: 7%; min-width: 80px;">
             <div style="display:flex; flex-direction:column; align-items:center; justify-content:center; gap:4px; font-family:sans-serif;">
-                <div style="display:flex; align-items:center; gap:4px;">
+                <div class="ios-switch-container" style="display:none; align-items:center; gap:4px;">
                     <span style="font-weight:bold; font-size:10px;">OR</span>
                     <div class="ios-switch" style="position:relative; width:44px; height:22px; border:2px solid #000000; background:#ffffff; border-radius:11px; cursor:pointer; display:inline-block; vertical-align:middle; transition:background-color 0.15s ease;">
                         <input type="checkbox" class="ios-switch-input" style="display:none;">
@@ -1081,10 +1087,10 @@ function createFilterRowElement() {
                     </div>
                     <span style="font-weight:bold; font-size:10px;">AND</span>
                 </div>
-                <label style="display:flex; align-items:center; gap:2px; font-size:10px; font-weight:bold; cursor:pointer;">
-                    <input type="checkbox" class="row-not-checkbox" style="width:12px; height:12px; border:2px solid #000; cursor:pointer; margin:0;">
-                    NOT (!)
-                </label>
+                <div class="custom-not-box" style="width: 24px; height: 24px; border: 2px solid #000000; background: #ffffff; color: #000000; font-weight: bold; font-size: 14px; display: flex; align-items: center; justify-content: center; cursor: pointer; user-select: none; transition: background-color 0.15s ease, color 0.15s ease;" title="Negate search row (NOT)">
+                    !
+                    <input type="checkbox" class="row-not-checkbox" style="display: none;">
+                </div>
             </div>
         </th>
         <th style="padding: 4px; width: 8%; min-width: 90px;"><input type="text" class="col-filter" data-col="date" placeholder="Filter..." style="width:90%; padding:4px; font-size:11px; font-family:sans-serif; box-sizing:border-box;"></th>
@@ -1114,8 +1120,22 @@ function createFilterRowElement() {
         renderTable();
     });
 
-    // Bind checkboxes and input events to trigger renderTable()
-    tr.querySelector('.row-not-checkbox').addEventListener('change', () => renderTable());
+    // Bind custom NOT box logic
+    const notBox = tr.querySelector('.custom-not-box');
+    const notChk = tr.querySelector('.row-not-checkbox');
+    notBox.addEventListener('click', () => {
+        notChk.checked = !notChk.checked;
+        if (notChk.checked) {
+            notBox.style.backgroundColor = '#e74c3c';
+            notBox.style.color = '#ffffff';
+        } else {
+            notBox.style.backgroundColor = '#ffffff';
+            notBox.style.color = '#000000';
+        }
+        renderTable();
+    });
+
+    // Bind input events to trigger renderTable()
     tr.querySelectorAll('.col-filter').forEach(inp => {
         inp.addEventListener('input', () => renderTable());
     });
@@ -1135,7 +1155,9 @@ function createFilterRowElement() {
         } else {
             // clear inputs
             tr.querySelectorAll('.col-filter').forEach(inp => inp.value = '');
-            tr.querySelector('.row-not-checkbox').checked = false;
+            notChk.checked = false;
+            notBox.style.backgroundColor = '#ffffff';
+            notBox.style.color = '#000000';
             chk.checked = false;
             thumb.style.left = '2px';
             sw.style.backgroundColor = '#ffffff';
@@ -1145,6 +1167,32 @@ function createFilterRowElement() {
     });
 
     return tr;
+}
+
+function updateFilterLogicSwitchVisibility() {
+    const allRows = document.querySelectorAll('.filter-row');
+    if (allRows.length === 0) return;
+
+    // First row logic switch visibility
+    const firstRow = allRows[0];
+    const firstSwitchContainer = firstRow.querySelector('.ios-switch-container');
+    let firstRowFilledCount = 0;
+    firstRow.querySelectorAll('.col-filter').forEach(inp => {
+        if (inp.value.trim()) firstRowFilledCount++;
+    });
+
+    const showFirstSwitch = (firstRowFilledCount > 1) || (allRows.length > 1);
+    if (firstSwitchContainer) {
+        firstSwitchContainer.style.display = showFirstSwitch ? 'flex' : 'none';
+    }
+
+    // Subsequent rows always show the logic switch
+    for (let i = 1; i < allRows.length; i++) {
+        const switchContainer = allRows[i].querySelector('.ios-switch-container');
+        if (switchContainer) {
+            switchContainer.style.display = 'flex';
+        }
+    }
 }
 
 function getFilterState() {
@@ -1845,6 +1893,7 @@ function renderTable() {
         renderTable();
     }));
 
+    updateFilterLogicSwitchVisibility();
     renderUnifiedColors();
 
     // B. RESTORE SCROLL Position
@@ -1971,7 +2020,12 @@ function updateCharts() {
         }
         runningAccounts[tx.account] = (runningAccounts[tx.account] || 0) + tx.amount;
 
-        monthly[m].net = runningNet;
+        // Sum up all account balances, including ghosts, to get the correct net worth
+        let sumNet = 0;
+        for (let acc in runningAccounts) {
+            sumNet += runningAccounts[acc];
+        }
+        monthly[m].net = sumNet;
         monthly[m].accountTotals = { ...runningAccounts };
     });
 
@@ -2023,6 +2077,11 @@ function updateCharts() {
     const scrollFunc = (e, els) => { 
         if (els.length) { 
             let targetIdx = els[0].index;
+            if (currentSortCol !== 'date') {
+                currentSortCol = 'date';
+                currentSortSortOrder = 'desc';
+                renderTable();
+            }
             let row = null;
             // Search forward
             for(let i = targetIdx; i < labels.length; i++) {
@@ -2052,15 +2111,7 @@ function updateCharts() {
         fill: false,
         tension: 0.1,
         spanGaps: false,
-        pointRadius: function (ctx) {
-            const index = ctx.dataIndex;
-            const value = ctx.dataset.data[index];
-            if (value === null) return 0;
-            const prev = index > 0 ? ctx.dataset.data[index - 1] : null;
-            const next = index < ctx.dataset.data.length - 1 ? ctx.dataset.data[index + 1] : null;
-            if (prev === value && next === value) return 0;
-            return 4;
-        },
+        pointRadius: 0,
         pointHoverRadius: 7
     });
 
