@@ -234,19 +234,49 @@
             </div>
         </div>
 
-        <h3 style="color: #000000;">Transactions</h3>
+        <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 10px;">
+            <h3 style="color: #000000; margin: 0; display: inline-flex; align-items: center; gap: 8px; font-family: sans-serif; font-weight: bold;">
+                <select id="timeModeSelect" style="font-size: inherit; padding: 2px 6px; border: 2px solid #000; background: #fff; color: #000; font-weight: bold; cursor: pointer;">
+                    <option value="individual">Individual</option>
+                    <option value="monthly">Monthly</option>
+                    <option value="yearly">Yearly</option>
+                    <option value="combined">Combined</option>
+                </select>
+                Transactions
+            </h3>
+            <button id="toggleShowAllBtn" style="padding: 5px 10px; background: #ffffff; color: #000000; cursor: pointer; font-weight: bold; border: 2px solid #000; font-family: sans-serif;">Show Junk</button>
+        </div>
         <div id="tableContainer" style="max-height:600px; overflow:auto; border:3px solid #000000; position:relative;">
             <table style="font-size:12px; width:100%; border-collapse:collapse; text-align: left; background: #ffffff;">
-                <thead style="position:sticky; top:0; background:#ffffff; z-index:1;">
+                <thead style="position:sticky; top:0; background:#ffffff; z-index:2;">
+                    <tr id="filterRow" style="background:#ffffff; border-bottom: 2px solid #000000;">
+                        <th style="padding: 4px; text-align:center; vertical-align: middle;">
+                            <div id="filterLogicContainer" style="display:none; align-items:center; justify-content:center; gap: 4px; font-size: 11px; font-family: sans-serif;">
+                                <span style="font-weight:bold;">OR</span>
+                                <input type="checkbox" id="filterLogicToggle" style="width: 16px; height: 16px; border: 2px solid #000000; cursor: pointer; vertical-align: middle;">
+                                <span style="font-weight:bold;">AND</span>
+                            </div>
+                        </th>
+                        <th style="padding: 4px;"><input type="text" class="col-filter" data-col="date" placeholder="Filter..." style="width:90%; padding:4px; font-size:11px; font-family: sans-serif; box-sizing: border-box;"></th>
+                        <th style="padding: 4px;"><input type="text" class="col-filter" data-col="time" placeholder="Filter..." style="width:90%; padding:4px; font-size:11px; font-family: sans-serif; box-sizing: border-box;"></th>
+                        <th style="padding: 4px;"><input type="text" class="col-filter" data-col="desc" placeholder="Filter..." style="width:90%; padding:4px; font-size:11px; font-family: sans-serif; box-sizing: border-box;"></th>
+                        <th style="padding: 4px;"><input type="text" class="col-filter" data-col="amount" placeholder="Filter..." style="width:90%; padding:4px; font-size:11px; font-family: sans-serif; box-sizing: border-box;"></th>
+                        <th style="padding: 4px;"><input type="text" class="col-filter" data-col="category" placeholder="Filter..." style="width:90%; padding:4px; font-size:11px; font-family: sans-serif; box-sizing: border-box;"></th>
+                        <th style="padding: 4px;"><input type="text" class="col-filter" data-col="account" placeholder="Filter..." style="width:90%; padding:4px; font-size:11px; font-family: sans-serif; box-sizing: border-box;"></th>
+                        <th style="padding: 4px;"><input type="text" class="col-filter" data-col="notes" placeholder="Filter..." style="width:90%; padding:4px; font-size:11px; font-family: sans-serif; box-sizing: border-box;"></th>
+                    </tr>
                     <tr style="border-bottom: 3px solid #000000;">
-                        <th style="padding: 8px; text-align:center;">Isolate</th>
-                        <th style="padding: 8px;">Date</th>
-                        <th style="padding: 8px; min-width: 80px;">Time</th>
-                        <th style="padding: 8px;">Description</th>
-                        <th style="padding: 8px;">Amount</th>
-                        <th style="padding: 8px; min-width: 140px;">Category</th>
-                        <th style="padding: 8px;">Account</th>
-                        <th style="padding: 8px; width: 25%;">Notes</th>
+                        <th id="th-isolate" style="padding: 8px; text-align:center; cursor:pointer; font-family: sans-serif;">
+                            <span id="headerIsolateLabel">Isolate</span>
+                            <span id="caret-isolate" style="display:none;"></span>
+                        </th>
+                        <th id="th-date" style="padding: 8px; cursor:pointer; font-family: sans-serif;">Date <span id="caret-date"></span></th>
+                        <th id="th-time" style="padding: 8px; cursor:pointer; font-family: sans-serif;">Time</th>
+                        <th id="th-desc" style="padding: 8px; cursor:pointer; font-family: sans-serif;">Description <span id="caret-desc" style="display:none;"></span></th>
+                        <th id="th-amount" style="padding: 8px; cursor:pointer; font-family: sans-serif;">Amount <span id="caret-amount" style="display:none;"></span></th>
+                        <th id="th-category" style="padding: 8px; cursor:pointer; font-family: sans-serif;">Category <span id="caret-category" style="display:none;"></span></th>
+                        <th id="th-account" style="padding: 8px; cursor:pointer; font-family: sans-serif;">Account <span id="caret-account" style="display:none;"></span></th>
+                        <th id="th-notes" style="padding: 8px; cursor:pointer; font-family: sans-serif; width: 25%;">Notes <span id="caret-notes" style="display:none;"></span></th>
                     </tr>
                 </thead>
                 <tbody id="txnTable"></tbody>

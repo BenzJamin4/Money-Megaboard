@@ -1,11 +1,13 @@
 CHANGELOG:
 
-v4.4.0 (Title)
+v4.4.0 (Transactions Table & Categories)
 Features:
-- 
+- Show All / Hide Junk Toggle: Added a toggle button to show or hide programmatically hidden transfers and manually hidden transactions. Junk rows render with reduced opacity and a gray background.
+- Combined Date Mode: Added dropdown options for Monthly, Yearly, and Combined (All-Time) grouping. Sums amount values, merges unique notes, displays oldest and soonest dates as "First Date" and "Last Date", and propagates note/category edits to all grouped transactions.
+- Inline Filtering: Added text input filters above each column header with an OR/AND logic toggle switch that appears when multiple filter boxes are active.
+- Header Sorting & Carets: Added sorting capabilities to header columns with caret indicators (▲/▼). Date and Time columns share a combined sort state and caret.
+- Description Usability: Enabled native text cursor selection and copying within Description cells.
 
-Bug Fixes:
--
 
 v4.3.2 (Tooltip Visible Totals on All Charts)
 Features:

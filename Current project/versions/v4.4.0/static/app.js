@@ -2,6 +2,10 @@
 
 let netChart, posNegChart, pieChartExpenses, pieChartIncome, stackedChart;
 let stackedChartMode = 'absolute';
+let showAllTransactions = false;
+let currentSortCol = 'date';
+let currentSortSortOrder = 'desc';
+let currentTimeMode = 'individual';
 let allTransactions = [];
 let pendingGroups = {};
 
@@ -29,6 +33,8 @@ window.onload = async () => {
     await loadSettingsFromServer();
     if (!appSettings.accountColors) appSettings.accountColors = {};
     if (!appSettings.categoryColors) appSettings.categoryColors = {};
+    if (!appSettings.hiddenTxs) appSettings.hiddenTxs = {};
+    if (!appSettings.unhiddenTxs) appSettings.unhiddenTxs = {};
     setupEventListeners();
     renderTransferRules();
     renderCategoryColors();
@@ -423,6 +429,52 @@ function setupEventListeners() {
         document.getElementById("stackedAbsoluteBtn").style.color = "#000000";
         updateCharts();
     });
+
+    // Time grouping mode select dropdown
+    document.getElementById("timeModeSelect").addEventListener("change", (e) => {
+        currentTimeMode = e.target.value;
+        renderTable();
+    });
+
+    // Show/Hide junk button
+    document.getElementById("toggleShowAllBtn").addEventListener("click", (e) => {
+        showAllTransactions = !showAllTransactions;
+        e.target.innerText = showAllTransactions ? "Hide Junk" : "Show Junk";
+        renderTable();
+    });
+
+    // Inline filters input
+    document.querySelectorAll('.col-filter').forEach(inp => {
+        inp.addEventListener('input', () => {
+            const filledFilters = Array.from(document.querySelectorAll('.col-filter'))
+                .filter(i => i.value.trim() !== '');
+            const logicContainer = document.getElementById("filterLogicContainer");
+            const isolateLabel = document.getElementById("headerIsolateLabel");
+            if (filledFilters.length > 1) {
+                if (logicContainer) logicContainer.style.display = "flex";
+                if (isolateLabel) isolateLabel.style.display = "none";
+            } else {
+                if (logicContainer) logicContainer.style.display = "none";
+                if (isolateLabel) isolateLabel.style.display = "inline";
+            }
+            renderTable();
+        });
+    });
+
+    // Filter Logic AND/OR checkbox toggle
+    document.getElementById("filterLogicToggle").addEventListener("change", () => {
+        renderTable();
+    });
+
+    // Sorting Click Handlers
+    document.getElementById("th-isolate").addEventListener("click", () => toggleSort("isolate"));
+    document.getElementById("th-date").addEventListener("click", () => toggleSort("date"));
+    document.getElementById("th-time").addEventListener("click", () => toggleSort("date")); // Date & Time share combined sorting
+    document.getElementById("th-desc").addEventListener("click", () => toggleSort("desc"));
+    document.getElementById("th-amount").addEventListener("click", () => toggleSort("amount"));
+    document.getElementById("th-category").addEventListener("click", () => toggleSort("category"));
+    document.getElementById("th-account").addEventListener("click", () => toggleSort("account"));
+    document.getElementById("th-notes").addEventListener("click", () => toggleSort("notes"));
 }
 
 
@@ -1027,12 +1079,230 @@ function highlightKeywords(desc) {
     return result;
 }
 
-const ACCOUNT_COLORS = ["#3498db", "#e74c3c", "#2ecc71", "#f1c40f", "#9b59b6", "#e67e22", "#1abc9c", "#34495e", "#ff78cb", "#be2edd"];
+// HELPER FUNCTIONS FOR HIDING, SORTING, AND FILTERING
+
+function isTxHidden(tx) {
+    if (tx.isHidden) {
+        return !appSettings.unhiddenTxs[tx.id];
+    } else {
+        return !!appSettings.hiddenTxs[tx.id];
+    }
+}
+
+async function toggleTxHidden(txId) {
+    const tx = allTransactions.find(t => t.id === txId);
+    if (!tx) return;
+    
+    if (isTxHidden(tx)) {
+        if (tx.isHidden) {
+            appSettings.unhiddenTxs[tx.id] = true;
+        } else {
+            delete appSettings.hiddenTxs[tx.id];
+        }
+    } else {
+        if (tx.isHidden) {
+            delete appSettings.unhiddenTxs[tx.id];
+        } else {
+            appSettings.hiddenTxs[tx.id] = true;
+        }
+    }
+    await saveSettingsToServer();
+    renderTable();
+    updateCharts();
+}
+
+async function toggleGroupHidden(txIdsString) {
+    const ids = txIdsString.split(",");
+    const firstTx = allTransactions.find(t => t.id === ids[0]);
+    if (!firstTx) return;
+    const shouldUnhide = isTxHidden(firstTx);
+    
+    for (let id of ids) {
+        const tx = allTransactions.find(t => t.id === id);
+        if (!tx) continue;
+        if (shouldUnhide) {
+            if (tx.isHidden) {
+                appSettings.unhiddenTxs[tx.id] = true;
+            } else {
+                delete appSettings.hiddenTxs[tx.id];
+            }
+        } else {
+            if (tx.isHidden) {
+                delete appSettings.unhiddenTxs[tx.id];
+            } else {
+                appSettings.hiddenTxs[tx.id] = true;
+            }
+        }
+    }
+    await saveSettingsToServer();
+    renderTable();
+    updateCharts();
+}
+
+function toggleSort(col) {
+    if (currentSortCol === col) {
+        currentSortSortOrder = (currentSortSortOrder === 'asc') ? 'desc' : 'asc';
+    } else {
+        currentSortCol = col;
+        currentSortSortOrder = 'desc';
+    }
+    renderTable();
+}
+
+function updateSortCarets() {
+    const cols = ['isolate', 'date', 'desc', 'amount', 'category', 'account', 'notes'];
+    cols.forEach(c => {
+        const caretEl = document.getElementById(`caret-${c}`);
+        if (!caretEl) return;
+        if (currentSortCol === c) {
+            caretEl.innerText = currentSortSortOrder === 'asc' ? ' ▲' : ' ▼';
+            caretEl.style.display = 'inline';
+        } else {
+            caretEl.innerText = '';
+            caretEl.style.display = 'none';
+        }
+    });
+}
+
+function rowMatchesFilter(row, col, val) {
+    if (!val) return true;
+    
+    switch (col) {
+        case 'date':
+            if (currentTimeMode === 'individual') {
+                return row.date.toLocaleDateString().toLowerCase().includes(val);
+            } else {
+                return row.firstDate.toLocaleDateString().toLowerCase().includes(val);
+            }
+        case 'time':
+            if (currentTimeMode === 'individual') {
+                return row.displayTime.toLowerCase().includes(val);
+            } else {
+                return row.lastDate.toLocaleDateString().toLowerCase().includes(val);
+            }
+        case 'desc':
+            return row.displayDescText.toLowerCase().includes(val);
+        case 'amount':
+            return row.amount.toFixed(2).includes(val);
+        case 'category':
+            return row.category.toLowerCase().includes(val);
+        case 'account':
+            return row.displayAccount.toLowerCase().includes(val);
+        case 'notes':
+            return row.notes.toLowerCase().includes(val);
+        default:
+            return true;
+    }
+}
+
+function getIndividualRowData(tx, allAccountsList, isJunk) {
+    let displayDescText = tx.desc;
+    let displayDescHtml = highlightKeywords(tx.desc);
+    let displayAmount = tx.amount;
+    let displayAccount = tx.account;
+    let amountColor = tx.amount < 0 ? "#e74c3c" : "#27ae60";
+    let amountSign = tx.amount > 0 ? "+" : "";
+    let isConsolidatedTransfer = false;
+    let accountColor = getAccountColor(displayAccount, allAccountsList);
+
+    const formatTime = (d) => {
+        const t = d.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+        return (t === "12:00 AM" || t === "00:00") ? "" : t;
+    };
+    let displayTime = formatTime(tx.date);
+
+    if (tx.isTransfer && tx.transferPartnerTxId) {
+        const partner = allTransactions.find(t => t.id === tx.transferPartnerTxId);
+        if (partner) {
+            const src = tx.amount < 0 ? tx.account : partner.account;
+            const dst = tx.amount > 0 ? tx.account : partner.account;
+            const srcCol = getAccountColor(src, allAccountsList);
+            const dstCol = getAccountColor(dst, allAccountsList);
+            displayDescText = `Transfer: ${src} -> ${dst}`;
+            displayDescHtml = highlightKeywords(`Transfer: `) + `<span style="color:${srcCol}; font-weight:bold;">${src}</span> -> <span style="color:${dstCol}; font-weight:bold;">${dst}</span>`;
+            displayAmount = Math.abs(tx.amount);
+            displayAccount = "Transfer";
+            amountColor = "#0055ff";
+            amountSign = "";
+            isConsolidatedTransfer = true;
+            accountColor = "#000000";
+
+            let timeSrc = tx.date;
+            let timeDst = partner.date;
+            const tSrcFormatted = timeSrc.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+            const tDstFormatted = timeDst.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+            const srcIsMidnight = tSrcFormatted === "12:00 AM" || tSrcFormatted === "00:00";
+            const dstIsMidnight = tDstFormatted === "12:00 AM" || tDstFormatted === "00:00";
+            let finalTime = null;
+            const daySrc = timeSrc.toLocaleDateString();
+            const dayDst = timeDst.toLocaleDateString();
+
+            if (daySrc === dayDst) {
+                if (!srcIsMidnight) finalTime = timeSrc;
+                else if (!dstIsMidnight) finalTime = timeDst;
+                else finalTime = timeSrc;
+            } else {
+                const newerDate = timeSrc > timeDst ? timeSrc : timeDst;
+                const newerIsMidnight = timeSrc > timeDst ? srcIsMidnight : dstIsMidnight;
+                if (!newerIsMidnight) {
+                    finalTime = newerDate;
+                }
+            }
+
+            if (finalTime) {
+                displayTime = formatTime(finalTime);
+            } else {
+                displayTime = "";
+            }
+        }
+    } else if (tx.isTransfer && !tx.transferPartnerTxId && tx.transferPartnerAccount) {
+        const src = tx.amount < 0 ? tx.account : tx.transferPartnerAccount;
+        const dst = tx.amount > 0 ? tx.account : tx.transferPartnerAccount;
+        const srcCol = getAccountColor(src, allAccountsList);
+        const dstCol = getAccountColor(dst, allAccountsList);
+        displayDescText = `Transfer: ${src} -> ${dst}`;
+        displayDescHtml = highlightKeywords(`Transfer: `) + `<span style="color:${srcCol}; font-weight:bold;">${src}</span> -> <span style="color:${dstCol}; font-weight:bold;">${dst}</span>`;
+        displayAmount = Math.abs(tx.amount);
+        displayAccount = "Transfer";
+        amountColor = "#0055ff";
+        amountSign = "";
+        isConsolidatedTransfer = true;
+        accountColor = "#000000";
+    } else if (tx.isolate && tx.category === 'Transfers' && tx.manualTransferAccount) {
+        const src = tx.amount < 0 ? tx.account : tx.manualTransferAccount;
+        const dst = tx.amount > 0 ? tx.account : tx.manualTransferAccount;
+        const srcCol = getAccountColor(src, allAccountsList);
+        const dstCol = getAccountColor(dst, allAccountsList);
+        displayDescText = `Transfer: ${src} -> ${dst}`;
+        displayDescHtml = highlightKeywords(`Transfer: `) + `<span style="color:${srcCol}; font-weight:bold;">${src}</span> -> <span style="color:${dstCol}; font-weight:bold;">${dst}</span>`;
+        displayAmount = Math.abs(tx.amount);
+        displayAccount = "Transfer";
+        amountColor = "#0055ff";
+        amountSign = "";
+        isConsolidatedTransfer = true;
+        accountColor = "#000000";
+    }
+
+    return {
+        tx,
+        id: tx.id,
+        date: tx.date,
+        displayTime,
+        displayDescText,
+        displayDescHtml,
+        amount: displayAmount,
+        displayAccount,
+        amountColor,
+        amountSign,
+        isConsolidatedTransfer,
+        accountColor,
+        category: tx.category,
+        notes: tx.notes || "",
+        isJunk
+    };
+}
 
 function renderTable() {
-    const tbody = document.getElementById("txnTable");
-    tbody.innerHTML = "";
-
     const activeAccountNames = new Set(allTransactions.map(t => t.account));
     const ghostAccounts = new Set();
     if (appSettings.transferRules) {
@@ -1043,146 +1313,269 @@ function renderTable() {
     }
     const allAccountsList = [...new Set([...activeAccountNames, ...ghostAccounts])].sort();
 
+    // 1. Filter Junk / programmatically hidden and manually hidden
+    let rowsToProcess = [];
     allTransactions.forEach(tx => {
-        if (tx.isHidden) return;
-        const row = document.createElement("tr");
-        const monthTag = `${tx.date.getFullYear()}-${String(tx.date.getMonth() + 1).padStart(2, "0")}`;
-        row.setAttribute("data-month", monthTag);
-
-        let displayDesc = highlightKeywords(tx.desc);
-        let displayAmount = tx.amount;
-        let displayAccount = tx.account;
-        let amountColor = tx.amount < 0 ? "#e74c3c" : "#27ae60";
-        let amountSign = tx.amount > 0 ? "+" : "";
-        let isConsolidatedTransfer = false;
-
-        const formatTime = (d) => {
-            const t = d.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
-            return (t === "12:00 AM" || t === "00:00") ? "" : t;
-        };
-        let displayTime = formatTime(tx.date);
-
-        let accountColor = getAccountColor(displayAccount, allAccountsList);
-
-        if (tx.isTransfer && tx.transferPartnerTxId) {
-            const partner = allTransactions.find(t => t.id === tx.transferPartnerTxId);
-            if (partner) {
-                const src = tx.amount < 0 ? tx.account : partner.account;
-                const dst = tx.amount > 0 ? tx.account : partner.account;
-                const srcCol = getAccountColor(src, allAccountsList);
-                const dstCol = getAccountColor(dst, allAccountsList);
-                displayDesc = highlightKeywords(`Transfer: `) + `<span style="color:${srcCol}; font-weight:bold;">${src}</span> -> <span style="color:${dstCol}; font-weight:bold;">${dst}</span>`;
-                displayAmount = Math.abs(tx.amount);
-                displayAccount = "Transfer";
-                amountColor = "#0055ff";
-                amountSign = "";
-                isConsolidatedTransfer = true;
-                accountColor = "#000000";
-
-                // Get time of older transaction
-                let timeSrc = tx.date;
-                let timeDst = partner.date;
-
-                const tSrcFormatted = timeSrc.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
-                const tDstFormatted = timeDst.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
-                const srcIsMidnight = tSrcFormatted === "12:00 AM" || tSrcFormatted === "00:00";
-                const dstIsMidnight = tDstFormatted === "12:00 AM" || tDstFormatted === "00:00";
-
-                let finalTime = null;
-
-                const daySrc = timeSrc.toLocaleDateString();
-                const dayDst = timeDst.toLocaleDateString();
-
-                if (daySrc === dayDst) {
-                    // Same day: pick the one with a real time
-                    if (!srcIsMidnight) finalTime = timeSrc;
-                    else if (!dstIsMidnight) finalTime = timeDst;
-                    else finalTime = timeSrc; // Both midnight, doesn't matter
-                } else {
-                    // Different days: use the NEWER date's time
-                    const newerDate = timeSrc > timeDst ? timeSrc : timeDst;
-                    const newerIsMidnight = timeSrc > timeDst ? srcIsMidnight : dstIsMidnight;
-
-                    // If the newer date has a real time, use it. Otherwise, leave finalTime null (don't show a time)
-                    if (!newerIsMidnight) {
-                        finalTime = newerDate;
-                    }
-                }
-
-                if (finalTime) {
-                    displayTime = formatTime(finalTime);
-                } else {
-                    displayTime = ""; // Don't show a time if the newest date defaulted to midnight
-                }
-            }
-        } else if (tx.isTransfer && !tx.transferPartnerTxId && tx.transferPartnerAccount) {
-            const src = tx.amount < 0 ? tx.account : tx.transferPartnerAccount;
-            const dst = tx.amount > 0 ? tx.account : tx.transferPartnerAccount;
-            const srcCol = getAccountColor(src, allAccountsList);
-            const dstCol = getAccountColor(dst, allAccountsList);
-            displayDesc = highlightKeywords(`Transfer: `) + `<span style="color:${srcCol}; font-weight:bold;">${src}</span> -> <span style="color:${dstCol}; font-weight:bold;">${dst}</span>`;
-            displayAmount = Math.abs(tx.amount);
-            displayAccount = "Transfer";
-            amountColor = "#0055ff";
-            amountSign = "";
-            isConsolidatedTransfer = true;
-            accountColor = "#000000";
-        } else if (tx.isolate && tx.category === 'Transfers' && tx.manualTransferAccount) {
-            // Manually-linked ghost transfer
-            const src = tx.amount < 0 ? tx.account : tx.manualTransferAccount;
-            const dst = tx.amount > 0 ? tx.account : tx.manualTransferAccount;
-            const srcCol = getAccountColor(src, allAccountsList);
-            const dstCol = getAccountColor(dst, allAccountsList);
-            displayDesc = highlightKeywords(`Transfer: `) + `<span style="color:${srcCol}; font-weight:bold;">${src}</span> -> <span style="color:${dstCol}; font-weight:bold;">${dst}</span>`;
-            displayAmount = Math.abs(tx.amount);
-            displayAccount = "Transfer";
-            amountColor = "#0055ff";
-            amountSign = "";
-            isConsolidatedTransfer = true;
-            accountColor = "#000000";
+        const isJunk = isTxHidden(tx);
+        if (isJunk && !showAllTransactions) {
+            return;
         }
-
-        let accountHtml = `<td style="color:${accountColor}; font-weight:bold;">${displayAccount}</td>`;
-        if (tx.isolate && tx.category === 'Transfers' && !isConsolidatedTransfer) {
-            // Show orange account dropdown for ghost transfer target selection
-            const otherAccounts = allAccountsList.filter(a => a !== tx.account);
-            accountHtml = `<td><select class="ghost-transfer-select" data-id="${tx.id}" style="font-weight:bold; width:100%; cursor:pointer; border:2px solid #e67e22; background:#fff3e0;">
-                <option value="">Select account...</option>
-                ${otherAccounts.map(a => `<option value="${a}">${a}</option>`).join('')}
-            </select></td>`;
-        }
-
-        row.innerHTML = `
-            <td style="text-align:center;"><input type="checkbox" class="isolate-cb" data-id="${tx.id}" ${tx.isolate ? 'checked' : ''} ${isConsolidatedTransfer && !tx.manualTransferAccount ? 'disabled' : ''}></td>
-            <td style="font-weight:bold;">${tx.date.toLocaleDateString()}</td>
-            <td style="font-weight:bold; color:#000000;">${displayTime}</td>
-            <td title="${tx.desc}">${displayDesc}</td>
-            <td style="color:${amountColor}; font-weight:bold;">${amountSign}${displayAmount.toFixed(2)}</td>
-            <td style="background:${getCategoryColor(tx.category)};"><select class="cat-select" data-id="${tx.id}" style="color:white; background:transparent; border:none; font-weight:bold; width:100%; text-shadow:1px 1px 2px #000; cursor:pointer;" ${isConsolidatedTransfer ? 'disabled' : ''}>
-                ${(tx.amount > 0 ? INCOME_CATS : EXPENSE_CATS).map(c => `<option value="${c}" ${tx.category === c ? 'selected' : ''}>${c}</option>`).join('')}
-            </select></td>
-            ${accountHtml}
-            <td><textarea class="note-input" data-id="${tx.id}" style="width:95%; height:30px; resize:vertical;">${tx.notes}</textarea></td>
-        `;
-        tbody.appendChild(row);
+        const rowData = getIndividualRowData(tx, allAccountsList, isJunk);
+        rowsToProcess.push(rowData);
     });
 
-    document.querySelectorAll('.acc-select').forEach(sel => sel.addEventListener('change', async (e) => {
-        const tx = allTransactions.find(t => t.id === e.target.dataset.id);
-        if (tx) {
-            tx.account = e.target.value;
-            // Retain isolate override logic 
-            if (tx.isolate) {
-                appSettings.isolatedTxs[tx.id] = appSettings.isolatedTxs[tx.id] || { isolate: true };
-                appSettings.isolatedTxs[tx.id].account = tx.account;
+    // 2. Grouping by time mode
+    let processedRows = [];
+    if (currentTimeMode === "individual") {
+        processedRows = rowsToProcess;
+    } else {
+        const groups = {};
+        rowsToProcess.forEach(row => {
+            let groupKey = "";
+            const dateObj = row.date;
+            const year = dateObj.getFullYear();
+            const month = String(dateObj.getMonth() + 1).padStart(2, "0");
+            
+            if (currentTimeMode === "monthly") {
+                groupKey = `${year}-${month}|${row.displayAccount}|${row.displayDescText}`;
+            } else if (currentTimeMode === "yearly") {
+                groupKey = `${year}|${row.displayAccount}|${row.displayDescText}`;
+            } else if (currentTimeMode === "combined") {
+                groupKey = `${row.displayAccount}|${row.displayDescText}`;
             }
-            await saveSettingsToServer();
-            renderTable();
-            updateCharts();
-        }
-    }));
+            
+            if (!groups[groupKey]) {
+                groups[groupKey] = {
+                    key: groupKey,
+                    displayAccount: row.displayAccount,
+                    displayDescText: row.displayDescText,
+                    displayDescHtml: row.displayDescHtml,
+                    amount: 0,
+                    category: row.category,
+                    notesList: [],
+                    txs: [],
+                    firstDate: row.date,
+                    lastDate: row.date,
+                    isConsolidatedTransfer: row.isConsolidatedTransfer,
+                    accountColor: row.accountColor,
+                    isJunk: row.isJunk
+                };
+            }
+            
+            const g = groups[groupKey];
+            g.amount += row.amount;
+            
+            if (row.date < g.firstDate) {
+                g.firstDate = row.date;
+            }
+            if (row.date > g.lastDate) {
+                g.lastDate = row.date;
+            }
+            
+            if (row.notes && row.notes.trim() !== "") {
+                const cleanedNote = row.notes.trim();
+                if (!g.notesList.includes(cleanedNote)) {
+                    g.notesList.push(cleanedNote);
+                }
+            }
+            
+            g.txs.push(row.tx);
+            
+            if (!row.isJunk) {
+                g.isJunk = false;
+            }
+        });
+        
+        processedRows = Object.values(groups).map(g => {
+            return {
+                id: g.txs.map(t => t.id).join(","),
+                firstDate: g.firstDate,
+                lastDate: g.lastDate,
+                displayDescText: g.displayDescText,
+                displayDescHtml: g.displayDescHtml,
+                amount: g.amount,
+                displayAccount: g.displayAccount,
+                amountColor: g.amount < 0 ? "#e74c3c" : (g.displayAccount === "Transfer" ? "#0055ff" : "#27ae60"),
+                amountSign: g.amount > 0 && g.displayAccount !== "Transfer" ? "+" : "",
+                isConsolidatedTransfer: g.isConsolidatedTransfer,
+                accountColor: g.accountColor,
+                category: g.category,
+                notes: g.notesList.join("; "),
+                isJunk: g.isJunk,
+                txs: g.txs
+            };
+        });
+    }
 
-    // Ghost transfer account selection
+    // 3. Inline Text Filtering
+    const filledFilters = Array.from(document.querySelectorAll('.col-filter'))
+        .map(inp => ({ col: inp.dataset.col, val: inp.value.trim().toLowerCase() }))
+        .filter(f => f.val !== '');
+
+    if (filledFilters.length > 0) {
+        const isAnd = document.getElementById("filterLogicToggle").checked;
+        processedRows = processedRows.filter(row => {
+            if (isAnd) {
+                return filledFilters.every(f => rowMatchesFilter(row, f.col, f.val));
+            } else {
+                return filledFilters.some(f => rowMatchesFilter(row, f.col, f.val));
+            }
+        });
+    }
+
+    // 4. Sorting
+    processedRows.sort((a, b) => {
+        let valA, valB;
+        
+        switch (currentSortCol) {
+            case 'isolate':
+                valA = a.txs ? (a.txs.some(t => t.isolate) ? 1 : 0) : (a.tx && a.tx.isolate ? 1 : 0);
+                valB = b.txs ? (b.txs.some(t => t.isolate) ? 1 : 0) : (b.tx && b.tx.isolate ? 1 : 0);
+                break;
+                
+            case 'date':
+                valA = currentTimeMode === 'individual' ? a.date : a.firstDate;
+                valB = currentTimeMode === 'individual' ? b.date : b.firstDate;
+                break;
+                
+            case 'desc':
+                valA = a.displayDescText.toLowerCase();
+                valB = b.displayDescText.toLowerCase();
+                break;
+                
+            case 'amount':
+                valA = a.amount;
+                valB = b.amount;
+                break;
+                
+            case 'category':
+                valA = a.category.toLowerCase();
+                valB = b.category.toLowerCase();
+                break;
+                
+            case 'account':
+                valA = a.displayAccount.toLowerCase();
+                valB = b.displayAccount.toLowerCase();
+                break;
+                
+            case 'notes':
+                valA = a.notes.toLowerCase();
+                valB = b.notes.toLowerCase();
+                break;
+                
+            default:
+                valA = currentTimeMode === 'individual' ? a.date : a.firstDate;
+                valB = currentTimeMode === 'individual' ? b.date : b.firstDate;
+        }
+        
+        valA = valA || "";
+        valB = valB || "";
+        
+        if (valA < valB) return currentSortSortOrder === 'asc' ? -1 : 1;
+        if (valA > valB) return currentSortSortOrder === 'asc' ? 1 : -1;
+        return 0;
+    });
+
+    // 5. Update Table Column Headers (replace Time with 2nd Date)
+    const thDate = document.getElementById("th-date");
+    const thTime = document.getElementById("th-time");
+
+    if (currentTimeMode === "individual") {
+        if (thDate.childNodes[0]) thDate.childNodes[0].nodeValue = "Date ";
+        thTime.innerText = "Time";
+    } else {
+        if (thDate.childNodes[0]) thDate.childNodes[0].nodeValue = "First Date ";
+        thTime.innerText = "Last Date";
+    }
+    updateSortCarets();
+
+    // 6. Rendering DOM elements
+    const tbody = document.getElementById("txnTable");
+    tbody.innerHTML = "";
+
+    processedRows.forEach(row => {
+        const tr = document.createElement("tr");
+        const monthTag = currentTimeMode === 'individual' 
+            ? `${row.date.getFullYear()}-${String(row.date.getMonth() + 1).padStart(2, "0")}`
+            : `${row.firstDate.getFullYear()}-${String(row.firstDate.getMonth() + 1).padStart(2, "0")}`;
+        tr.setAttribute("data-month", monthTag);
+
+        if (row.isJunk) {
+            tr.style.opacity = "0.5";
+            tr.style.backgroundColor = "#f0f0f0";
+        }
+
+        const dateDisplay = currentTimeMode === 'individual' 
+            ? row.date.toLocaleDateString()
+            : row.firstDate.toLocaleDateString();
+
+        const timeDisplay = currentTimeMode === 'individual'
+            ? row.displayTime
+            : row.lastDate.toLocaleDateString();
+
+        let isolateHtml = "";
+        if (currentTimeMode === 'individual') {
+            const hideIcon = row.isJunk ? "👁️" : "❌";
+            const hideTitle = row.isJunk ? "Unhide transaction" : "Hide transaction";
+            isolateHtml = `
+                <td style="text-align:center;">
+                    <div style="display:flex; align-items:center; justify-content:center; gap:8px;">
+                        <input type="checkbox" class="isolate-cb" data-id="${row.id}" ${row.tx.isolate ? 'checked' : ''} ${row.isConsolidatedTransfer && !row.tx.manualTransferAccount ? 'disabled' : ''}>
+                        <button class="toggle-hide-btn" data-id="${row.id}" title="${hideTitle}" style="padding:2px 4px; background:none; border:2px solid #000; font-size:11px; cursor:pointer; font-weight:bold; line-height:1;">${hideIcon}</button>
+                    </div>
+                </td>
+            `;
+        } else {
+            const hideIcon = row.isJunk ? "👁️" : "❌";
+            const hideTitle = row.isJunk ? "Unhide all transactions in group" : "Hide all transactions in group";
+            isolateHtml = `
+                <td style="text-align:center;">
+                    <div style="display:flex; align-items:center; justify-content:center; gap:8px;">
+                        <input type="checkbox" disabled class="isolate-cb" data-id="${row.id}">
+                        <button class="toggle-group-hide-btn" data-ids="${row.id}" title="${hideTitle}" style="padding:2px 4px; background:none; border:2px solid #000; font-size:11px; cursor:pointer; font-weight:bold; line-height:1;">${hideIcon}</button>
+                    </div>
+                </td>
+            `;
+        }
+
+        let accountHtml = "";
+        if (currentTimeMode === 'individual') {
+            accountHtml = `<td style="color:${row.accountColor}; font-weight:bold;">${row.displayAccount}</td>`;
+            if (row.tx.isolate && row.category === 'Transfers' && !row.isConsolidatedTransfer) {
+                const otherAccounts = allAccountsList.filter(a => a !== row.tx.account);
+                accountHtml = `<td><select class="ghost-transfer-select" data-id="${row.id}" style="font-weight:bold; width:100%; cursor:pointer; border:2px solid #e67e22; background:#fff3e0;">
+                    <option value="">Select account...</option>
+                    ${otherAccounts.map(a => `<option value="${a}">${a}</option>`).join('')}
+                </select></td>`;
+            }
+        } else {
+            accountHtml = `<td style="color:${row.accountColor}; font-weight:bold;">${row.displayAccount}</td>`;
+        }
+
+        const isTransferGroup = row.displayAccount === "Transfer";
+        const catList = row.amount > 0 ? INCOME_CATS : EXPENSE_CATS;
+        const categoryHtml = `
+            <td style="background:${getCategoryColor(row.category)};">
+                <select class="cat-select" data-id="${row.id}" style="color:white; background:transparent; border:none; font-weight:bold; width:100%; text-shadow:1px 1px 2px #000; cursor:pointer;" ${isTransferGroup ? 'disabled' : ''}>
+                    ${catList.map(c => `<option value="${c}" ${row.category === c ? 'selected' : ''}>${c}</option>`).join('')}
+                </select>
+            </td>
+        `;
+
+        tr.innerHTML = `
+            ${isolateHtml}
+            <td style="font-weight:bold;">${dateDisplay}</td>
+            <td style="font-weight:bold; color:#000000;">${timeDisplay}</td>
+            <td title="${row.displayDescText}" style="user-select: text !important; -webkit-user-select: text !important;">${row.displayDescHtml}</td>
+            <td style="color:${row.amountColor}; font-weight:bold;">${row.amountSign}${row.amount.toFixed(2)}</td>
+            ${categoryHtml}
+            ${accountHtml}
+            <td><textarea class="note-input" data-id="${row.id}" style="width:95%; height:30px; resize:vertical;">${row.notes}</textarea></td>
+        `;
+        tbody.appendChild(tr);
+    });
+
+    // 7. Bind Event Listeners
     document.querySelectorAll('.ghost-transfer-select').forEach(sel => sel.addEventListener('change', async (e) => {
         const tx = allTransactions.find(t => t.id === e.target.dataset.id);
         if (tx && e.target.value) {
@@ -1201,31 +1594,53 @@ function renderTable() {
     document.querySelectorAll('.cat-select').forEach(sel => sel.addEventListener('change', handleCategoryChange));
     document.querySelectorAll('.isolate-cb').forEach(cb => cb.addEventListener('change', handleIsolateChange));
     document.querySelectorAll('.note-input').forEach(inp => inp.addEventListener('change', async (e) => {
-        const tx = allTransactions.find(t => t.id === e.target.dataset.id);
-        tx.notes = e.target.value;
-        appSettings.customNotes[tx.id] = tx.notes;
+        const ids = e.target.dataset.id.split(",");
+        const newNote = e.target.value;
+        for (let id of ids) {
+            const tx = allTransactions.find(t => t.id === id);
+            if (tx) {
+                tx.notes = newNote;
+                appSettings.customNotes[tx.id] = newNote;
+            }
+        }
         await saveSettingsToServer();
+        renderTable();
+    }));
+
+    document.querySelectorAll('.toggle-hide-btn').forEach(btn => btn.addEventListener('click', async (e) => {
+        e.preventDefault();
+        const id = e.currentTarget.dataset.id;
+        await toggleTxHidden(id);
+    }));
+
+    document.querySelectorAll('.toggle-group-hide-btn').forEach(btn => btn.addEventListener('click', async (e) => {
+        e.preventDefault();
+        const ids = e.currentTarget.dataset.ids;
+        await toggleGroupHidden(ids);
     }));
 
     renderUnifiedColors();
 }
 
 async function handleCategoryChange(e) {
-    const tx = allTransactions.find(t => t.id === e.target.dataset.id);
-    if (!tx) return;
+    const ids = e.target.dataset.id.split(",");
+    for (let id of ids) {
+        const tx = allTransactions.find(t => t.id === id);
+        if (!tx) continue;
 
-    tx.category = e.target.value;
+        tx.category = e.target.value;
 
-    if (tx.isolate) {
-        appSettings.isolatedTxs[tx.id] = { isolate: true, category: tx.category };
-    } else {
-        appSettings.customCategories[tx.normalizedDesc] = tx.category;
+        if (tx.isolate) {
+            appSettings.isolatedTxs[tx.id] = { isolate: true, category: tx.category };
+        } else {
+            appSettings.customCategories[tx.normalizedDesc] = tx.category;
 
-        allTransactions.forEach(t => {
-            if (t.normalizedDesc === tx.normalizedDesc && !t.isolate && !t.isTransfer) {
-                t.category = tx.category;
-            }
-        });
+            allTransactions.forEach(t => {
+                if (t.normalizedDesc === tx.normalizedDesc && !t.isolate && !t.isTransfer) {
+                    t.category = tx.category;
+                }
+            });
+        }
     }
 
     await saveSettingsToServer();
@@ -1234,38 +1649,42 @@ async function handleCategoryChange(e) {
 }
 
 async function handleIsolateChange(e) {
-    const tx = allTransactions.find(t => t.id === e.target.dataset.id);
-    if (tx) {
-        tx.isolate = e.target.checked;
-        if (tx.isolate) {
-            appSettings.isolatedTxs[tx.id] = { isolate: true, category: tx.category, account: tx.account };
-            if (tx.manualTransferAccount) {
-                appSettings.isolatedTxs[tx.id].manualTransferAccount = tx.manualTransferAccount;
-            }
-        } else {
-            delete appSettings.isolatedTxs[tx.id];
-            if (tx.manualTransferAccount) {
-                tx.isTransfer = false;
-                tx.transferPartnerAccount = null;
-                tx.manualTransferAccount = null;
-            }
-            // Fallback to naive category requires re-running guess on backend or doing basic logic:
-            tx.category = tx.originalCategory || (tx.amount > 0 ? "Income" : "Other");
-            if (appSettings.customCategories[tx.normalizedDesc]) {
-                tx.category = appSettings.customCategories[tx.normalizedDesc];
+    const ids = e.target.dataset.id.split(",");
+    for (let id of ids) {
+        const tx = allTransactions.find(t => t.id === id);
+        if (tx) {
+            tx.isolate = e.target.checked;
+            if (tx.isolate) {
+                appSettings.isolatedTxs[tx.id] = { isolate: true, category: tx.category, account: tx.account };
+                if (tx.manualTransferAccount) {
+                    appSettings.isolatedTxs[tx.id].manualTransferAccount = tx.manualTransferAccount;
+                }
+            } else {
+                delete appSettings.isolatedTxs[tx.id];
+                if (tx.manualTransferAccount) {
+                    tx.isTransfer = false;
+                    tx.transferPartnerAccount = null;
+                    tx.manualTransferAccount = null;
+                }
+                tx.category = tx.originalCategory || (tx.amount > 0 ? "Income" : "Other");
+                if (appSettings.customCategories[tx.normalizedDesc]) {
+                    tx.category = appSettings.customCategories[tx.normalizedDesc];
+                }
             }
         }
-        await saveSettingsToServer();
-        renderTable();
-        updateCharts();
     }
+    await saveSettingsToServer();
+    renderTable();
+    updateCharts();
 }
 
 
 function updateCharts() {
     const monthly = {};
     const accountNames = new Set();
-    const sortedTxs = [...allTransactions].sort((a, b) => a.date - b.date);
+    const sortedTxs = [...allTransactions]
+        .filter(t => !(!t.isHidden && appSettings.hiddenTxs[t.id]))
+        .sort((a, b) => a.date - b.date);
 
     // Compute ghostAccounts manually for the chart tooltip
     const activeAccountNames = new Set(sortedTxs.map(t => t.account));
