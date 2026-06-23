@@ -1,5 +1,12 @@
 CHANGELOG:
 
+v4.4.1 (Title)
+Features:
+- 
+
+Bug Fixes:
+-
+
 v4.4.0 (Transactions Table & Categories)
 Features:
 - Show All / Hide Junk Toggle: Added a toggle button to show or hide programmatically hidden transfers and manually hidden transactions. Junk rows render with reduced opacity and a gray background.
