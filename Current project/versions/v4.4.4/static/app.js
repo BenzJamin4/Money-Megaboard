@@ -1,4 +1,4 @@
-// app.js - Frontend Logic for Money Megaboard v4.4.3
+// app.js - Frontend Logic for Money Megaboard v4.4.4
 
 let netChart, posNegChart, pieChartExpenses, pieChartIncome, stackedChart;
 let stackedChartMode = 'absolute';
@@ -105,7 +105,17 @@ async function loadSettingsFromServer() {
     try {
         const res = await fetch('/api/settings');
         const data = await res.json();
-        appSettings = Object.assign(appSettings, data);
+        appSettings = Object.assign({
+            customCategories: {},
+            isolatedTxs: {},
+            csvMappings: {},
+            customNotes: {},
+            transferRules: [],
+            categoryColors: {},
+            accountColors: {},
+            hiddenTxs: {},
+            unhiddenTxs: {}
+        }, data);
     } catch (e) {
         console.error("Failed to load settings from server:", e);
     }
@@ -330,7 +340,17 @@ function setupEventListeners() {
                 });
 
                 if (response.ok) {
-                    appSettings = parsedSettings;
+                    appSettings = Object.assign({
+                        customCategories: {},
+                        isolatedTxs: {},
+                        csvMappings: {},
+                        customNotes: {},
+                        transferRules: [],
+                        categoryColors: {},
+                        accountColors: {},
+                        hiddenTxs: {},
+                        unhiddenTxs: {}
+                    }, parsedSettings);
                     const mapperContainer = document.getElementById("mappingContainer");
                     const isMapperVisible = mapperContainer && mapperContainer.style.display === "block";
                     
@@ -1229,10 +1249,12 @@ function evaluateFilterRow(row, r) {
 // HELPER FUNCTIONS FOR HIDING, SORTING, AND FILTERING
 
 function isTxHidden(tx) {
+    const unhidden = appSettings.unhiddenTxs || {};
+    const hidden = appSettings.hiddenTxs || {};
     if (tx.isHidden) {
-        return !appSettings.unhiddenTxs[tx.id];
+        return !unhidden[tx.id];
     } else {
-        return !!appSettings.hiddenTxs[tx.id];
+        return !!hidden[tx.id];
     }
 }
 
@@ -1972,8 +1994,9 @@ async function handleIsolateChange(e) {
 function updateCharts() {
     const monthly = {};
     const accountNames = new Set();
+    const hidden = appSettings.hiddenTxs || {};
     const sortedTxs = [...allTransactions]
-        .filter(t => !(!t.isHidden && appSettings.hiddenTxs[t.id]))
+        .filter(t => !(!t.isHidden && hidden[t.id]))
         .sort((a, b) => a.date - b.date);
 
     // Compute ghostAccounts manually for the chart tooltip
