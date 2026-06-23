@@ -1,5 +1,11 @@
 CHANGELOG:
 
+v4.4.2 (Fixed Column Widths & Single Clump Time)
+Features:
+- Static Column Sizing: Configured fixed table layout and explicit width percentages/minimum pixel values for all ledger columns to prevent width shifting while typing search inputs.
+- Conditional Folder Expansion Carets: Hides the expand/collapse folder carets for groups containing only a single transaction.
+- Single Group Time Substitution: Displays the single transaction's time in grey text instead of repeating the date string in the Time/Last Date column.
+
 v4.4.1 (Nested Groupings & Custom Filters)
 Features:
 - Show/Hide Junk Emojis: Hidden manual hide/unhide action icons on the main transaction ledger, showing them only when "Show Junk" mode is active.
