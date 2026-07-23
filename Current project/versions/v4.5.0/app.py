@@ -11,6 +11,7 @@ app = Flask(__name__)
 # Constants and Storage
 _APP_DIR = os.path.dirname(os.path.abspath(__file__))
 DATA_FILE = os.path.join(_APP_DIR, "app_data.json")
+g_cached_groups = {}
 
 # Injected Context for Standalone Mode
 def parse_version(v_str):
@@ -1137,10 +1138,19 @@ def handle_settings():
         return jsonify(load_data())
 
 
+@app.route('/api/get-cached-groups', methods=['GET'])
+def get_cached_groups():
+    global g_cached_groups
+    return jsonify({"groups": g_cached_groups})
+
+
 @app.route('/api/process', methods=['POST'])
 def process_data():
+    global g_cached_groups
     payload = request.json
     groups = payload.get('groups', [])
+    if groups:
+        g_cached_groups = {g.get('mappingKey', f'group_{i}'): g for i, g in enumerate(groups)}
     
     app_data = load_data()
     custom_categories = app_data.get('customCategories', {})
@@ -1161,6 +1171,100 @@ def process_data():
             if not rows or len(rows) == 0:
                 continue
             
+            # Check if this file is a Fidelity Monthly report export
+            is_fidelity_monthly = False
+            f_header_idx = -1
+
+            for r_i in range(min(10, len(rows))):
+                r_cols = [str(cell).strip().strip('"').lower() for cell in rows[r_i]]
+                if "monthly" in r_cols and ("beginning balance" in r_cols or "ending balance" in r_cols or "dividends" in r_cols):
+                    is_fidelity_monthly = True
+                    f_header_idx = r_i
+                    break
+                elif any("investment income" in str(cell).lower() for cell in rows[r_i]):
+                    is_fidelity_monthly = True
+
+            if is_fidelity_monthly:
+                if f_header_idx == -1:
+                    for r_i in range(len(rows)):
+                        r_cols = [str(cell).strip().strip('"').lower() for cell in rows[r_i]]
+                        if "monthly" in r_cols:
+                            f_header_idx = r_i
+                            break
+
+                if f_header_idx != -1:
+                    f_headers = [str(cell).strip().strip('"') for cell in rows[f_header_idx]]
+                    def get_f_col(name):
+                        for idx, h in enumerate(f_headers):
+                            if name.lower() in h.lower(): return idx
+                        return -1
+
+                    m_col = get_f_col("monthly")
+                    div_col = get_f_col("dividends")
+                    int_col = get_f_col("interest")
+                    mc_col = get_f_col("market change")
+                    dep_col = get_f_col("deposits")
+                    wth_col = get_f_col("withdrawals")
+                    fee_col = get_f_col("advisory fee")
+
+                    from dateutil import parser
+                    for r_i in range(f_header_idx + 1, len(rows)):
+                        cols = rows[r_i]
+                        if not cols or len(cols) == 0: continue
+                        if m_col != -1 and len(cols) > m_col:
+                            raw_m = str(cols[m_col]).strip().strip('"')
+                            if not raw_m or raw_m.lower().startswith("total") or raw_m.lower().startswith("for existing") or raw_m.startswith("1132"):
+                                continue
+
+                            parsed_dt = None
+                            as_of_match = re.search(r'As of ([A-Za-z]+-\d+-\d+)', raw_m)
+                            if as_of_match:
+                                try: parsed_dt = parser.parse(as_of_match.group(1))
+                                except Exception: pass
+                            if not parsed_dt:
+                                m_clean = re.sub(r'\(.*?\)', '', raw_m).strip()
+                                try: parsed_dt = parser.parse(m_clean)
+                                except Exception: continue
+
+                            iso_date = parsed_dt.strftime("%Y-%m-%dT00:00:00")
+
+                            def parse_v(c_idx):
+                                if c_idx != -1 and len(cols) > c_idx and cols[c_idx]:
+                                    return parse_amount(cols[c_idx])
+                                return 0.0
+
+                            v_div = parse_v(div_col)
+                            v_int = parse_v(int_col)
+                            v_mc = parse_v(mc_col)
+                            v_dep = parse_v(dep_col)
+                            v_wth = parse_v(wth_col)
+                            v_fee = parse_v(fee_col)
+
+                            tx_comps = []
+                            if v_div > 0: tx_comps.append(("Dividends", v_div, "Income"))
+                            if v_int > 0: tx_comps.append(("Interest", v_int, "Income"))
+                            if abs(v_mc) > 0.001: tx_comps.append(("Market Change", v_mc, "Investment"))
+                            if v_dep > 0: tx_comps.append(("Deposit", v_dep, "Transfers"))
+                            if abs(v_wth) > 0.001: tx_comps.append(("Withdrawal", -abs(v_wth), "Transfers"))
+                            if abs(v_fee) > 0.001: tx_comps.append(("Advisory Fee", -abs(v_fee), "Fees"))
+
+                            for comp_desc, comp_amt, default_cat in tx_comps:
+                                tx_id = f"fid_{account_name}_{iso_date}_{comp_desc}".replace(" ", "_")
+                                assigned_cat = custom_categories.get(tx_id, default_cat)
+                                parsed_transactions.append({
+                                    "id": tx_id,
+                                    "date": iso_date,
+                                    "description": f"{comp_desc} (Fidelity)",
+                                    "amount": comp_amt,
+                                    "category": assigned_cat,
+                                    "account": account_name,
+                                    "notes": custom_notes.get(tx_id, f"Fidelity statement: {raw_m}"),
+                                    "isTransfer": assigned_cat == "Transfers",
+                                    "isolate": isolated.get(tx_id, {}).get('isolate', False),
+                                    "manualTransferAccount": isolated.get(tx_id, {}).get('manualTransferAccount', '')
+                                })
+                    continue
+
             # Use this file's own header row for index computation
             headers = rows[0]
             

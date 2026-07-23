@@ -93,6 +93,8 @@
                         <input type="file" id="csvFiles" accept=".csv" multiple style="padding: 5px;" />
                         <button id="useDemoCsvsBtn"
                             style="padding: 5px 10px; background: #3498db; color: #ffffff; cursor: pointer; font-weight: bold; border: 2px solid #000; margin-left: 10px;">Use Demo CSVs</button>
+                        <button id="remapCsvsBtn"
+                            style="padding: 5px 10px; background: #9b59b6; color: #ffffff; cursor: pointer; font-weight: bold; border: 2px solid #000; margin-left: 10px;">Re-map CSVs</button>
                         <br><br>
                     </div>
 
@@ -139,19 +141,32 @@
             </div>
         </div>
 
-        <div style="margin-bottom: 30px; padding: 15px; background: #ffffff; border: 3px solid #000000;">
-            <div style="display: flex; justify-content: space-between; align-items: center;">
-                <h3 style="margin: 0; color: #000000;">Transfer Rules (Auto-Linker)</h3>
-                <button id="addTransferRuleBtn"
-                    style="padding: 5px 10px; background: #000000; color: #ffffff; cursor: pointer; font-weight: bold;">+
-                    Add Rule</button>
+        <div style="margin-bottom: 30px; display: flex; gap: 20px; flex-wrap: wrap;">
+            <div style="flex: 2; min-width: 320px; padding: 15px; background: #ffffff; border: 3px solid #000000;">
+                <div style="display: flex; justify-content: space-between; align-items: center;">
+                    <h3 style="margin: 0; color: #000000;">Transfer Rules (Auto-Linker)</h3>
+                    <button id="addTransferRuleBtn"
+                        style="padding: 5px 10px; background: #000000; color: #ffffff; cursor: pointer; font-weight: bold;">+
+                        Add Rule</button>
+                </div>
+                <p style="font-size: 12px; margin-top: 5px;">Define keywords and a day-range to link transfers.</p>
+                <div id="transferRulesContainer"
+                    style="margin-top: 10px; display: flex; flex-direction: column; gap: 10px;"></div>
+                <button id="applyRulesBtn"
+                    style="margin-top: 15px; padding: 5px 10px; background: #2980b9; color: #ffffff; cursor: pointer; font-weight: bold; display: none;">Apply
+                    Rules to Current Data</button>
             </div>
-            <p style="font-size: 12px; margin-top: 5px;">Define keywords and a day-range to link transfers.</p>
-            <div id="transferRulesContainer"
-                style="margin-top: 10px; display: flex; flex-direction: column; gap: 10px;"></div>
-            <button id="applyRulesBtn"
-                style="margin-top: 15px; padding: 5px 10px; background: #2980b9; color: #ffffff; cursor: pointer; font-weight: bold; display: none;">Apply
-                Rules to Current Data</button>
+            
+            <div style="flex: 1; min-width: 280px; padding: 15px; background: #ffffff; border: 3px solid #000000; display: flex; flex-direction: column;">
+                <div style="display: flex; justify-content: space-between; align-items: center;">
+                    <h3 style="margin: 0; color: #000000;">👻 Ghost Accounts</h3>
+                    <button id="addGhostCdBtn"
+                        style="padding: 4px 8px; background: #27ae60; color: #ffffff; cursor: pointer; font-weight: bold; font-size: 11px; border: 2px solid #000;">+ Create Ghost CD</button>
+                </div>
+                <p style="font-size: 12px; margin-top: 5px;">Active ghost accounts in system. Delete to undo all ghost assignments.</p>
+                <div id="ghostAccountsContainer"
+                    style="margin-top: 10px; flex-grow: 1; display: flex; flex-direction: column; gap: 8px;"></div>
+            </div>
         </div>
 
         <div style="display: flex; flex-direction: column; gap: 40px; margin-bottom: 40px;">
@@ -244,7 +259,10 @@
                 </select>
                 Transactions
             </h3>
-            <button id="toggleShowAllBtn" style="padding: 5px 10px; background: #ffffff; color: #000000; cursor: pointer; font-weight: bold; border: 2px solid #000; font-family: sans-serif;">Show Junk</button>
+            <div style="display: flex; gap: 10px; align-items: center;">
+                <button id="addGhostAccountBtn" style="display: none; padding: 5px 10px; background: #e67e22; color: #ffffff; cursor: pointer; font-weight: bold; border: 2px solid #000; font-family: sans-serif;">Add Ghost Account</button>
+                <button id="toggleShowAllBtn" style="padding: 5px 10px; background: #ffffff; color: #000000; cursor: pointer; font-weight: bold; border: 2px solid #000; font-family: sans-serif;">Show Junk</button>
+            </div>
         </div>
         <div id="tableContainer" style="max-height:600px; overflow:auto; border:3px solid #000000; position:relative;">
             <table style="font-size:12px; width:100%; border-collapse:collapse; text-align: left; background: #ffffff; table-layout: fixed;">

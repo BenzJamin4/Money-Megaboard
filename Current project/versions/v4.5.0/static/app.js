@@ -250,6 +250,95 @@ function setupEventListeners() {
         }
     });
 
+    const remapBtn = document.getElementById("remapCsvsBtn");
+    if (remapBtn) {
+        remapBtn.addEventListener("click", async () => {
+            if (!pendingGroups || Object.keys(pendingGroups).length === 0) {
+                try {
+                    const res = await fetch('/api/get-cached-groups');
+                    if (res.ok) {
+                        const data = await res.json();
+                        if (data.groups && Object.keys(data.groups).length > 0) {
+                            pendingGroups = data.groups;
+                        }
+                    }
+                } catch (e) { console.error(e); }
+            }
+            if (pendingGroups && Object.keys(pendingGroups).length > 0) {
+                renderMappingUI();
+            } else {
+                alert("No CSV files loaded to re-map. Please upload CSV files or load Demo CSVs first.");
+            }
+        });
+    }
+
+    const addGhostAccountBtn = document.getElementById("addGhostAccountBtn");
+    if (addGhostAccountBtn) {
+        addGhostAccountBtn.addEventListener("click", async () => {
+            const checkedCbs = document.querySelectorAll('.isolate-cb:checked');
+            if (checkedCbs.length <= 1) {
+                alert("Please select at least 2 isolate checkboxes in the table to bulk-assign them to a Ghost Account.");
+                return;
+            }
+            const ghostNameInput = prompt(`Enter Ghost Account name to bulk-assign ${checkedCbs.length} selected transactions:`);
+            if (!ghostNameInput || !ghostNameInput.trim()) return;
+            const targetGhost = ghostNameInput.trim();
+
+            checkedCbs.forEach(cb => {
+                const ids = cb.dataset.id ? cb.dataset.id.split(",") : [];
+                ids.forEach(id => {
+                    const tx = allTransactions.find(t => t.id === id);
+                    if (tx) {
+                        tx.isolate = true;
+                        tx.category = 'Transfers';
+                        tx.manualTransferAccount = targetGhost;
+                        tx.isTransfer = true;
+                        appSettings.customCategories[tx.id] = 'Transfers';
+                        appSettings.isolatedTxs[tx.id] = {
+                            isolate: true,
+                            category: 'Transfers',
+                            account: tx.account,
+                            manualTransferAccount: targetGhost
+                        };
+                    }
+                });
+            });
+
+            await saveSettingsToServer();
+            renderTable();
+            updateCharts();
+            renderTransferRules();
+            renderGhostAccountsPanel();
+            renderColorPickers();
+        });
+    }
+
+    const addGhostCdBtn = document.getElementById("addGhostCdBtn");
+    if (addGhostCdBtn) {
+        addGhostCdBtn.addEventListener("click", async () => {
+            const cdNameInput = prompt("Enter Ghost CD Account Name (e.g. 5% 12-Month CD):");
+            if (!cdNameInput || !cdNameInput.trim()) return;
+            const cdName = cdNameInput.trim();
+
+            const depositInput = prompt("Enter Initial Deposit Amount (e.g. 10000):", "10000");
+            if (!depositInput) return;
+            const deposit = parseFloat(depositInput) || 0;
+
+            const apyInput = prompt("Enter APY % (e.g. 5.0):", "5.0");
+            if (!apyInput) return;
+            const apy = parseFloat(apyInput) || 0;
+
+            const termInput = prompt("Enter Term in Months (e.g. 12):", "12");
+            if (!termInput) return;
+            const termMonths = parseInt(termInput, 10) || 12;
+
+            const startDateInput = prompt("Enter Start Date (YYYY-MM-DD):", new Date().toISOString().split('T')[0]);
+            if (!startDateInput) return;
+
+            createGhostCd(cdName, deposit, apy, termMonths, startDateInput);
+        });
+    }
+
     // PayPal download buttons
     document.getElementById("downloadCleanedBtn").addEventListener("click", (e) => {
         e.preventDefault();
@@ -847,6 +936,8 @@ function renderTransferRules() {
     if (megaBtn) {
         megaBtn.style.display = allTransactions.length > 0 ? "inline-block" : "none";
     }
+
+    renderGhostAccountsPanel();
 }
 
 function saveTransferRuleLocal(idx, field, rawValue) {
@@ -859,6 +950,205 @@ async function addTransferRule() {
     appSettings.transferRules.push({ acc1: "", desc1: "", acc2: "", desc2: "", days: 3 });
     await saveSettingsToServer();
     renderTransferRules();
+}
+
+
+// --- GHOST ACCOUNTS MANAGEMENT & UNDO ---
+
+function getGhostAccounts() {
+    const activeAccounts = new Set();
+    if (typeof pendingGroups !== 'undefined' && pendingGroups) {
+        Object.values(pendingGroups).forEach(g => {
+            if (g.filesData) {
+                g.filesData.forEach(fd => {
+                    if (fd.accountName) activeAccounts.add(fd.accountName);
+                });
+            }
+        });
+    }
+    allTransactions.forEach(tx => {
+        if (!tx.isGhost && tx.account) {
+            activeAccounts.add(tx.account);
+        }
+    });
+
+    const ghostAccounts = new Set();
+    if (appSettings.transferRules) {
+        appSettings.transferRules.forEach(rule => {
+            if (rule.acc1 && !activeAccounts.has(rule.acc1)) ghostAccounts.add(rule.acc1);
+            if (rule.acc2 && !activeAccounts.has(rule.acc2)) ghostAccounts.add(rule.acc2);
+        });
+    }
+    if (appSettings.isolatedTxs) {
+        Object.values(appSettings.isolatedTxs).forEach(iso => {
+            if (iso.manualTransferAccount && !activeAccounts.has(iso.manualTransferAccount)) {
+                ghostAccounts.add(iso.manualTransferAccount);
+            }
+        });
+    }
+    allTransactions.forEach(tx => {
+        if (tx.manualTransferAccount && !activeAccounts.has(tx.manualTransferAccount)) {
+            ghostAccounts.add(tx.manualTransferAccount);
+        }
+        if (tx.transferPartnerAccount && !activeAccounts.has(tx.transferPartnerAccount)) {
+            ghostAccounts.add(tx.transferPartnerAccount);
+        }
+        if (tx.isGhost && tx.account && !activeAccounts.has(tx.account)) {
+            ghostAccounts.add(tx.account);
+        }
+    });
+
+    if (appSettings.ghostCds) {
+        Object.keys(appSettings.ghostCds).forEach(name => {
+            if (!activeAccounts.has(name)) ghostAccounts.add(name);
+        });
+    }
+
+    return [...ghostAccounts].sort();
+}
+
+function renderGhostAccountsPanel() {
+    const container = document.getElementById("ghostAccountsContainer");
+    if (!container) return;
+    container.innerHTML = "";
+
+    const ghosts = getGhostAccounts();
+    if (ghosts.length === 0) {
+        container.innerHTML = `<div style="font-size:12px; color:#7f8c8d; font-style:italic;">No active ghost accounts.</div>`;
+        return;
+    }
+
+    ghosts.forEach(ghostName => {
+        const div = document.createElement("div");
+        div.style.cssText = "display:flex; justify-content:space-between; align-items:center; padding:6px 10px; background:#fef5e7; border:2px solid #e67e22; font-size:12px; font-weight:bold;";
+        div.innerHTML = `
+            <span>👻 ${ghostName}</span>
+            <button class="delete-ghost-btn" data-ghost="${ghostName}" style="padding:2px 6px; background:#e74c3c; color:white; border:none; cursor:pointer; font-weight:bold; font-size:11px;">Delete & Undo</button>
+        `;
+        container.appendChild(div);
+    });
+
+    container.querySelectorAll('.delete-ghost-btn').forEach(btn => {
+        btn.addEventListener('click', async (e) => {
+            const ghostName = e.target.dataset.ghost;
+            if (confirm(`Delete Ghost Account "${ghostName}" and undo all associated ghost transfers and rules?`)) {
+                await deleteGhostAccount(ghostName);
+            }
+        });
+    });
+}
+
+async function deleteGhostAccount(ghostName) {
+    // 1. Remove transfer rules referencing ghostName
+    if (appSettings.transferRules) {
+        appSettings.transferRules = appSettings.transferRules.filter(r => r.acc1 !== ghostName && r.acc2 !== ghostName);
+    }
+
+    // 2. Clear isolatedTxs referencing ghostName
+    if (appSettings.isolatedTxs) {
+        Object.keys(appSettings.isolatedTxs).forEach(id => {
+            if (appSettings.isolatedTxs[id].manualTransferAccount === ghostName) {
+                delete appSettings.isolatedTxs[id];
+            }
+        });
+    }
+
+    // 3. Clear transaction references & remove ghost transactions
+    allTransactions = allTransactions.filter(tx => {
+        if (tx.isGhost && tx.account === ghostName) {
+            return false;
+        }
+        if (tx.manualTransferAccount === ghostName) {
+            delete tx.manualTransferAccount;
+            tx.isolate = false;
+            tx.isTransfer = false;
+            tx.category = tx.originalCategory || (tx.amount > 0 ? "Income" : "Other");
+            if (appSettings.customCategories && appSettings.customCategories[tx.id]) {
+                delete appSettings.customCategories[tx.id];
+            }
+        }
+        if (tx.transferPartnerAccount === ghostName) {
+            delete tx.transferPartnerAccount;
+        }
+        return true;
+    });
+
+    // 4. Remove from accountColors
+    if (appSettings.accountColors && appSettings.accountColors[ghostName]) {
+        delete appSettings.accountColors[ghostName];
+    }
+
+    // 5. Remove from ghostCds
+    if (appSettings.ghostCds && appSettings.ghostCds[ghostName]) {
+        delete appSettings.ghostCds[ghostName];
+    }
+
+    await saveSettingsToServer();
+    renderTable();
+    updateCharts();
+    renderTransferRules();
+    renderGhostAccountsPanel();
+    renderColorPickers();
+}
+
+function createGhostCd(cdName, deposit, apy, termMonths, startDateStr) {
+    if (!appSettings.ghostCds) appSettings.ghostCds = {};
+    appSettings.ghostCds[cdName] = { deposit, apy, termMonths, startDateStr };
+
+    const startDate = new Date(startDateStr);
+    const monthlyRate = (apy / 100.0) / 12.0;
+
+    // 1. Initial Deposit transaction
+    const depTxId = `ghostcd_${cdName}_dep_${startDateStr}`.replace(/\s+/g, '_');
+    allTransactions.push({
+        id: depTxId,
+        date: startDate,
+        description: `Initial Deposit (${cdName})`,
+        amount: deposit,
+        category: 'Transfers',
+        account: cdName,
+        notes: `Ghost Certificate of Deposit (${apy}% APY)`,
+        isTransfer: true,
+        isGhost: true,
+        isolate: false
+    });
+
+    // 2. Monthly interest growth over term
+    let currentBal = deposit;
+    for (let m = 1; m <= termMonths; m++) {
+        const interestDate = new Date(startDate);
+        interestDate.setMonth(interestDate.getMonth() + m);
+        const monthlyInterest = currentBal * monthlyRate;
+        currentBal += monthlyInterest;
+
+        const intTxId = `ghostcd_${cdName}_int_m${m}_${interestDate.toISOString().split('T')[0]}`.replace(/\s+/g, '_');
+        allTransactions.push({
+            id: intTxId,
+            date: interestDate,
+            description: `Monthly Interest (${cdName})`,
+            amount: parseFloat(monthlyInterest.toFixed(2)),
+            category: 'Income',
+            account: cdName,
+            notes: `Month ${m} Ghost CD yield`,
+            isTransfer: false,
+            isGhost: true,
+            isolate: false
+        });
+    }
+
+    saveSettingsToServer();
+    renderTable();
+    updateCharts();
+    renderTransferRules();
+    renderGhostAccountsPanel();
+    renderColorPickers();
+}
+
+function updateGhostPickerBtnVisibility() {
+    const btn = document.getElementById("addGhostAccountBtn");
+    if (!btn) return;
+    const checked = document.querySelectorAll('.isolate-cb:checked');
+    btn.style.display = checked.length > 1 ? "inline-block" : "none";
 }
 
 
@@ -1952,6 +2242,7 @@ function renderTable() {
 
     updateFilterLogicSwitchVisibility();
     renderUnifiedColors();
+    updateGhostPickerBtnVisibility();
 
     // B. RESTORE SCROLL Position
     if (targetId && container) {
@@ -2023,6 +2314,7 @@ async function handleIsolateChange(e) {
     await saveSettingsToServer();
     renderTable();
     updateCharts();
+    updateGhostPickerBtnVisibility();
 }
 
 

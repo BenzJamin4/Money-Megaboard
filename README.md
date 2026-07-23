@@ -1,5 +1,12 @@
 CHANGELOG:
 
+v4.5.0 (Ghost Accounts & Re-mapping)
+Features:
+- Ghost Picker (Multi-Select): Added bulk ghost account assignment via isolate checkboxes. When 2 or more checkboxes are checked, an "Add Ghost Account" button appears in the title row to assign transactions to a target ghost account.
+- Ghost Accounts Panel: Added a dedicated Ghost Accounts panel on the right side of Transfer Rules showing all active ghost accounts with a single-click "Delete & Undo" button that clears transfer rules, un-isolates assigned transactions, and removes deleted ghosts from color pickers.
+- CSV Re-mapper: Added a "Re-map CSVs" button to re-open the column mapping modal instantly without having to re-upload CSV files.
+- Monthly Fidelity Statement & Ghost CDs: Added support for parsing monthly investment statement CSVs into monthly component transactions, and introduced Ghost Certificate Deposit (CD) tracking using the same monthly balance yield logic.
+
 v4.4.4 (Settings Import Bug Fix & Unique Account Colors)
 Features:
 - Unique Default Account Colors: Refactored default color selection to automatically assign random unique colors from the color picker palette (PRESET_COLORS) to newly discovered active and ghost accounts upon detection, saving them to settings to prevent color shifting.
